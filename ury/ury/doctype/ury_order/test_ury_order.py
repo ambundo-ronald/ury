@@ -1153,3 +1153,59 @@ class TestCaptainTransfer(FrappeTestCase):
 
         self.assertEqual(pos_invoice.waiter, "captain_b@example.com")
         pos_invoice.save.assert_called_once()
+
+
+class _StopAfterCustomer(Exception):
+    pass
+
+
+class TestSyncOrderOptionalCustomer(FrappeTestCase):
+    """Staff orders don't need a customer: sync_order falls back to the POS
+    Profile's default (walk-in) customer."""
+
+    def _run_new_take_away_order(self, profile_customer, customer=None):
+        mock_invoice = MagicMock()
+        mock_invoice.name = None  # brand-new order
+        mock_invoice.customer = None
+
+        mock_pos_profile = _make_pos_profile()
+        mock_pos_profile.customer = profile_customer
+
+        def get_doc(doctype, name=None):
+            if doctype == "Customer":
+                # Customer is resolved by now; stop before the rest of sync_order.
+                raise _StopAfterCustomer(name)
+            return mock_pos_profile
+
+        with patch("ury.ury.doctype.ury_order.ury_order.get_order_invoice", return_value=mock_invoice), \
+                patch("ury.ury.doctype.ury_order.ury_order.frappe.has_permission", return_value=True), \
+                patch("ury.ury.doctype.ury_order.ury_order.frappe.get_doc", side_effect=get_doc), \
+                patch("ury.ury.doctype.ury_order.ury_order.frappe.get_roles", return_value=["URY Cashier"]):
+            sync_order(
+                items="[]",
+                cashier="fake_cashier",
+                owner="fake_owner",
+                mode_of_payment="Cash",
+                customer=customer,
+                no_of_pax=1,
+                last_invoice=None,
+                waiter="fake_waiter",
+                pos_profile="Test Profile",
+                order_type="Take Away",
+            )
+        return mock_invoice
+
+    def test_uses_pos_profile_default_customer_when_none_given(self):
+        with self.assertRaises(_StopAfterCustomer) as context:
+            self._run_new_take_away_order(profile_customer="Walk-In Customer")
+        self.assertEqual(str(context.exception), "Walk-In Customer")
+
+    def test_selected_customer_overrides_default(self):
+        with self.assertRaises(_StopAfterCustomer) as context:
+            self._run_new_take_away_order(profile_customer="Walk-In Customer", customer="Jane")
+        self.assertEqual(str(context.exception), "Jane")
+
+    def test_errors_clearly_when_no_customer_and_no_default(self):
+        with self.assertRaises(frappe.ValidationError) as context:
+            self._run_new_take_away_order(profile_customer=None)
+        self.assertIn("default Customer on POS Profile", str(context.exception))

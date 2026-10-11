@@ -1291,11 +1291,11 @@ def sync_order(
     cashier,
     owner,
     mode_of_payment,
-    customer,
     no_of_pax,
     last_invoice,
     waiter,
     pos_profile,
+    customer=None,
     last_modified_time=None,
     table=None,
     invoice=None,
@@ -1436,10 +1436,15 @@ def sync_order(
             )
             return {"status": "Failure"}
 
+    # Customer is optional for staff orders: a busy restaurant can't ask every
+    # guest for their name. Keep the order's existing customer on an update,
+    # otherwise fall back to the POS Profile's default (walk-in) customer.
+    customer = customer or invoice.customer or posprofile.customer
     if not customer:
-        frappe.throw("Please enter valid customer details")
-    else:
-        invoice.customer = customer
+        frappe.throw(
+            _("Set a default Customer on POS Profile {0} to take orders without a customer").format(pos_profile)
+        )
+    invoice.customer = customer
 
     if order_type:
         invoice.order_type = order_type

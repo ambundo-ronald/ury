@@ -85,14 +85,11 @@ const OrderPanel = () => {
         throw new Error(t('errors.user_not_logged_in'));
       }
 
-      // Validate customer/aggregator details
-      if (selectedOrderType === 'Aggregators') {
-        if (!selectedAggregator?.customer) {
-          showToast.error(t('errors.select_aggregator'));
-          return;
-        }
-      } else if (!selectedCustomer?.name) {
-        showToast.error(t('errors.select_customer'));
+      // Aggregator orders need the aggregator's customer for pricing. Customer
+      // is optional otherwise; the backend falls back to the POS Profile's
+      // default customer.
+      if (selectedOrderType === 'Aggregators' && !selectedAggregator?.customer) {
+        showToast.error(t('errors.select_aggregator'));
         return;
       }
 
