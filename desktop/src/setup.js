@@ -67,6 +67,21 @@ async function loadPrinters() {
   }
 }
 
+function renderUpdate(update) {
+  const text = {
+    disabled: 'Updates are off in this build (development or no update feed).',
+    idle: 'Checks for updates every few hours.',
+    checking: 'Checking for updates...',
+    up_to_date: 'Up to date.',
+    downloading: `Downloading version ${update.version || ''} (${update.progress || 0}%). Printing carries on.`,
+    ready: `Version ${update.version} is ready. It installs by itself between 3 and 5 a.m., when the app is quit, or now with Restart to update (printing pauses for about 10 seconds).`,
+    error: `Could not check for updates: ${update.message || 'no connection'}. Will try again later.`,
+  }[update.state];
+  $('update-text').textContent = text || update.state;
+  $('install-update').classList.toggle('hidden', update.state !== 'ready');
+  $('check-update').disabled = ['disabled', 'checking', 'downloading', 'ready'].includes(update.state);
+}
+
 async function load() {
   const state = await window.ury.getState();
   $('site').value = state.siteUrl || '';
@@ -76,7 +91,12 @@ async function load() {
   $('paired-as').textContent = state.paired ? `Paired as ${state.agentName} (${state.branch}) on ${state.siteUrl}` : '';
   $('open-pos').disabled = !state.siteUrl;
   renderStatus(state.status);
+  renderUpdate(state.update);
 }
+
+$('check-update').addEventListener('click', () => window.ury.checkUpdate());
+$('install-update').addEventListener('click', () => window.ury.installUpdate());
+window.ury.onUpdate(renderUpdate);
 
 $('pair').addEventListener('click', async () => {
   const button = $('pair');

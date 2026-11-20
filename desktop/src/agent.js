@@ -177,12 +177,15 @@ class PrintAgent extends EventEmitter {
     if (this.printed.has(key)) {
       // Printed before, but the site never heard: just confirm it.
     } else {
+      this.busy = true;
       try {
         await this.printHtml(job.html, job.printer);
         this.printed.set(key, Date.now());
       } catch (error) {
         ok = false;
         reason = `${job.printer}: ${error.message || error}`;
+      } finally {
+        this.busy = false;
       }
     }
     this._remember({ job: key, label: job.label, printer: job.printer, ok, reason, at: new Date().toISOString() });

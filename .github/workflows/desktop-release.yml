@@ -1,0 +1,86 @@
+# Builds the URY POS Windows app and publishes it for automatic updates.
+#
+# Release: bump "version" in desktop/package.json, commit, then push a tag
+#   git tag desktop-v1.0.1 && git push origin desktop-v1.0.1
+#
+# Installed apps update from the rolling `desktop-latest` release of this
+# repository, which only ever holds the newest installer and latest.yml.
+# Each version also gets its own `desktop-vX.Y.Z` release for history.
+name: Desktop app release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Tag matches package.json version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "desktop-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match desktop/package.json version $version" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Build installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: >
+          npx electron-builder --win nsis --publish never
+          -c.publish.provider=generic
+          -c.publish.url=https://github.com/${{ github.repository }}/releases/download/desktop-latest/
+
+      - name: Publish version release
+        run: |
+          cd dist
+          gh release create "$GITHUB_REF_NAME" \
+            "URY-POS-Setup-$VERSION.exe" "URY-POS-Setup-$VERSION.exe.blockmap" latest.yml \
+            --title "URY POS for Windows $VERSION" \
+            --notes "Windows app with built-in print agent. Installed apps update automatically." \
+            --latest=false
+
+      - name: Update the desktop-latest feed
+        run: |
+          cd dist
+          if ! gh release view desktop-latest >/dev/null 2>&1; then
+            gh release create desktop-latest --title "URY POS for Windows (update feed)" \
+              --notes "Update feed for installed URY POS apps. Download the newest installer below." \
+              --prerelease --latest=false
+          fi
+          # Upload the new files first, so installed apps never see a feed
+          # pointing at a missing installer, then remove older installers.
+          # Older .blockmap files stay (they are small): an installed app
+          # compares its own version's blockmap with the new one and downloads
+          # only the changed parts.
+          gh release upload desktop-latest \
+            "URY-POS-Setup-$VERSION.exe" "URY-POS-Setup-$VERSION.exe.blockmap" --clobber
+          gh release upload desktop-latest latest.yml --clobber
+          gh release view desktop-latest --json assets -q '.assets[].name' | while read -r asset; do
+            case "$asset" in
+              *.exe) [ "$asset" = "URY-POS-Setup-$VERSION.exe" ] || gh release delete-asset desktop-latest "$asset" --yes ;;
+            esac
+          done

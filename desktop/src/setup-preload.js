@@ -9,4 +9,7 @@ contextBridge.exposeInMainWorld('ury', {
   testPrint: (printer) => ipcRenderer.invoke('test-print', printer),
   openPos: () => ipcRenderer.invoke('open-pos'),
   onStatus: (callback) => ipcRenderer.on('agent-status', (_event, status) => callback(status)),
+  checkUpdate: () => ipcRenderer.invoke('check-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdate: (callback) => ipcRenderer.on('update-status', (_event, status) => callback(status)),
 });

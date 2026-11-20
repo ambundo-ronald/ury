@@ -104,7 +104,40 @@ To stop a PC printing (lost or replaced), open its agent and click
 Tests: `ury.ury.printing.test_print_agent` (server), `cd desktop && npm test`
 (agent loop).
 
-Build the installer: `cd desktop && npm install && npm run dist` (output in
-`desktop/dist`). The build is not code-signed, so Windows SmartScreen warns
-on first install; click "More info" > "Run anyway". There is no auto-update
-yet: install new versions over the old one.
+## Updates
+
+Installed apps update themselves from this repository's `desktop-latest`
+GitHub release:
+
+- They check an hour after starting, then every 4 hours.
+- A new version downloads in the background while printing carries on.
+  Usually only the changed parts download, not the whole installer.
+- **When it installs:** installing restarts the app and pauses printing for
+  about 10 seconds, so it never happens during service by itself. It installs:
+  - between 3 and 5 a.m. local time, unless a ticket is printing;
+  - when the app is quit or Windows restarts;
+  - when someone clicks **Restart to update**, in the tray menu or the
+    Printing window.
+- Tickets sent during the restart wait and print right after.
+
+### Releasing a new version
+
+1. Bump `version` in `desktop/package.json` and commit.
+2. Push a matching tag: `git tag desktop-v1.0.1 && git push origin desktop-v1.0.1`.
+
+The **Desktop app release** workflow (`.github/workflows/desktop-release.yml`)
+then:
+- runs the tests;
+- builds the installer;
+- publishes a `desktop-vX.Y.Z` release;
+- replaces the installer and `latest.yml` on `desktop-latest`.
+
+Download installers for new PCs from `desktop-latest` too.
+
+A local build (`cd desktop && npm install && npm run dist`, output in
+`desktop/dist`) has no update feed and never updates itself. Use it only for
+testing.
+
+The builds are not code-signed, so Windows SmartScreen warns on the first
+install. Click "More info" > "Run anyway". Updates install without the
+warning.

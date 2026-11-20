@@ -22,6 +22,7 @@
       "src/**/*",
       "assets/**/*"
     ],
+    "artifactName": "URY-POS-Setup-${version}.${ext}",
     "win": {
       "target": "nsis",
       "icon": "assets/icon.png",
@@ -34,5 +35,8 @@
       "createDesktopShortcut": true,
       "runAfterFinish": true
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.6.2"
   }
 }

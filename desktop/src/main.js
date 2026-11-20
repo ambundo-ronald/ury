@@ -9,6 +9,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, shell, safeStorage, nativeImage
 const configModule = require('./config');
 const { PrintAgent, pair } = require('./agent');
 const printer = require('./printer');
+const { Updater } = require('./updater');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -19,6 +20,7 @@ let posWindow = null;
 let setupWindow = null;
 let tray = null;
 let agent = null;
+let updater = null;
 let config = null;
 let quitting = false;
 
@@ -114,6 +116,18 @@ function trayLabel(status) {
   );
 }
 
+function updateMenuItems() {
+  const u = updater ? updater.status : { state: 'disabled' };
+  if (u.state === 'ready') {
+    return [{ label: `Restart to update to ${u.version}`, click: () => updater.installNow() }];
+  }
+  if (u.state === 'downloading') {
+    return [{ label: `Downloading update ${u.version || ''} (${u.progress || 0}%)`, enabled: false }];
+  }
+  if (u.state === 'disabled') return [];
+  return [{ label: 'Check for updates', click: () => updater.check() }];
+}
+
 function refreshTray() {
   if (!tray) return;
   const status = agent ? agent.status : { state: 'stopped' };
@@ -125,6 +139,7 @@ function refreshTray() {
       { label: 'Printing status and setup', click: openSetup },
       { type: 'separator' },
       { label: trayLabel(status), enabled: false },
+      ...updateMenuItems(),
       {
         label: 'Start with Windows',
         type: 'checkbox',
@@ -158,11 +173,27 @@ function sendStatus() {
   refreshTray();
 }
 
+function sendUpdateStatus() {
+  if (setupWindow && !setupWindow.isDestroyed()) setupWindow.webContents.send('update-status', updater.status);
+  refreshTray();
+}
+
 function setupIpc() {
   ipcMain.handle('get-state', () => {
     const { siteUrl, agentName, branch, token } = config.get();
-    return { siteUrl, agentName, branch, paired: Boolean(token), status: agent.status, version: app.getVersion() };
+    return {
+      siteUrl,
+      agentName,
+      branch,
+      paired: Boolean(token),
+      status: agent.status,
+      update: updater.status,
+      version: app.getVersion(),
+    };
   });
+
+  ipcMain.handle('check-update', () => updater.check());
+  ipcMain.handle('install-update', () => updater.installNow());
 
   ipcMain.handle('pair', async (_event, { siteUrl, agentName, code }) => {
     const site = configModule.normaliseSiteUrl(siteUrl);
@@ -225,6 +256,20 @@ app.whenReady().then(() => {
     version: app.getVersion(),
   });
   agent.on('status', sendStatus);
+
+  updater = new Updater({
+    autoUpdater: require('electron-updater').autoUpdater,
+    // Development runs and local builds have no update feed; release builds
+    // from CI carry app-update.yml.
+    enabled: app.isPackaged && fs.existsSync(path.join(process.resourcesPath, 'app-update.yml')),
+    isPrinting: () => Boolean(agent.busy),
+  });
+  updater.on('status', sendUpdateStatus);
+  updater.on('installing', () => {
+    quitting = true;
+    agent.stop();
+  });
+  updater.start();
 
   setupIpc();
   tray = new Tray(icon());
