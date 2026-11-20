@@ -83,7 +83,19 @@ def reprint_kot(invoice_number):
 
 
 def print_kot(printer,docname, kot_print_format):
+    from ury.ury.printing import queue
+
     try:
+        if queue.agent_for_printer(printer):
+            queue.send(
+                "POS Invoice",
+                docname,
+                printer,
+                kot_print_format,
+                branch=frappe.db.get_value("POS Invoice", docname, "branch"),
+                label=_("KOT reprint · {0}").format(docname),
+            )
+            return
         print_by_server("POS Invoice",docname, printer, kot_print_format)
     except Exception as e:
         frappe.log_error(f"KOT Reprint Error: {e}")

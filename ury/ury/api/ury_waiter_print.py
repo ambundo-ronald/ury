@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.utils.print_format import print_by_server
 
 WAITER_PRINT_FORMAT = "URY Waiter Order Slip"
@@ -181,6 +182,20 @@ def print_combined_waiter_order_slip(invoice_id, kot_names, restaurant_table):
 			continue
 
 		try:
+			from ury.ury.printing import queue
+
+			if queue.agent_for_printer(printer_row.printer):
+				# The slip is built in memory, so render it now for the agent.
+				queue.send_html(
+					"URY KOT",
+					kot_names[0],
+					printer_row.printer,
+					frappe.get_print("URY KOT", kot_names[0], waiter_print_format, doc=combined_doc, no_letterhead=1),
+					print_format=waiter_print_format,
+					branch=combined_doc.get("branch"),
+					label=_("Waiter slip · {0}").format(restaurant_table),
+				)
+				continue
 			print_by_server(
 				"URY KOT",
 				kot_names[0],

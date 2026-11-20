@@ -1,0 +1,110 @@
+# Printing kitchen tickets and bills from the cloud
+
+When URY runs on a cloud server, the server cannot reach printers on the
+restaurant's network. The **URY POS Windows app** solves this: installed on a
+PC at the restaurant, it collects kitchen tickets (KOTs) and bills from the
+site and prints them on that PC's printers.
+
+- The PC only makes outgoing HTTPS connections. No VPN, no port forwarding,
+  no print server.
+- It prints from the tray icon even when the POS window is closed and nobody
+  is signed in to the POS.
+- If the PC or the internet is down, tickets wait on the site and print when
+  it is back (tickets older than 12 hours are not printed).
+- Nothing is lost silently: a ticket that does not print shows on the
+  cashier's POS with a **Reprint** button.
+
+Printers not handled by an agent keep printing through a print server (CUPS)
+as before, and their failures now show on the POS too.
+
+## Setting up
+
+### 1. The printers in Windows
+
+On the PC, install each kitchen, bar and bill printer in Windows with its
+own driver (for example the XPrinter driver), whether it is on the network
+or plugged in by USB. Give network printers a fixed IP address on the router
+so they do not move. Print a Windows test page to check each one.
+
+The PC must stay switched on during service. Set it never to sleep.
+
+### 2. The printers in URY
+
+Each printer used in a production unit, room or POS Profile is a
+**Network Printer Settings** record (Desk > Network Printer Settings). For a
+printer printed by the app, the Server IP, Port and Printer Name fields are
+not used, but Frappe requires them: enter the printer's IP, `9100` and its
+name.
+
+Pick these printers as usual:
+- **Kitchen tickets:** URY Production Unit > printers, with "KOT print" ticked
+  and a KOT print format.
+- **Bills:** POS Profile (or URY Room) > printers, with "Bill" ticked and
+  print type "network".
+
+### 3. The print agent
+
+1. Desk > **URY Print Agent** > New. Name it after the PC (e.g. `POS-PC`)
+   and choose the branch.
+2. Install `URY POS Setup.exe` on the PC and open it. The **Printing** window
+   opens.
+3. In the agent form, click **Pair the Windows App**. Type the site address,
+   the agent name and the 6-digit code into the app, then click **Pair**. The
+   code works once and expires in 10 minutes.
+4. The app lists **Printers on this PC**, and so does the agent form
+   ("Printers Found On This PC"). In the agent's **Printers** table, add a
+   row for each URY printer with its Windows name exactly as listed.
+5. In the app, choose a printer and click **Test print**.
+
+After pairing, the app starts with Windows (tray menu > Start with Windows).
+Closing the POS window keeps printing; only tray menu > Quit stops it.
+
+A printer belongs to one agent. If a second PC should print, give it its
+own agent and printers.
+
+## When something does not print
+
+The cashier's POS shows **Printing problems**:
+
+| What it says | What to do |
+|---|---|
+| A ticket and the printer's error | Fix the printer (paper, power, cable), then **Reprint**. **Dismiss** if it was handled another way. |
+| "The print PC is not connected" | The PC is off, asleep, offline, or the app was quit. Tickets wait and print when it is back. |
+| "N waiting to print" | Same as above, or the app is still catching up. |
+
+Waiters do not see these alerts; cashiers and managers do.
+
+Every job is listed in Desk > **URY Print Job** (status, printer, error,
+attempts). Jobs older than 30 days are deleted daily.
+
+To stop a PC printing (lost or replaced), open its agent and click
+**Unpair**, or untick **Enabled**.
+
+## For developers
+
+| Part | Where |
+|---|---|
+| Queue and routing (agent or CUPS) | `ury/ury/printing/queue.py` |
+| Agent endpoints (`pair`, `poll`, `report`) | `ury/ury/printing/agent.py` |
+| POS alerts (`get_print_problems`, `retry_print_job`, `dismiss_print_job`) | `ury/ury/printing/api.py`; POS: `pos/src/components/PrintAlerts.tsx` |
+| KOTs, KOT reprint, waiter slips, bills | `ury_kot.py`, `ury_kot_reprint.py`, `ury_waiter_print.py`, `ury_print.network_printing` |
+| Windows app | `desktop/` (Electron) |
+
+- **How the agent works:** it polls `poll` every 3 seconds, sending its token
+  in the `X-URY-Agent-Token` header.
+- **Claimed jobs:** `poll` claims up to 10 jobs for the agent's printers and
+  returns each as a standalone HTML page. A job claimed but not reported
+  within 120 seconds is offered again.
+- **No double printing:** the app remembers what it printed, so a job offered
+  again only gets confirmed, not printed twice.
+- **Pairing:** a one-time code, stored hashed, like station activation. The
+  agent's token is stored hashed on the site and encrypted with Windows DPAPI
+  on the PC.
+
+Tests: `ury.ury.printing.test_print_agent` (server), `cd desktop && npm test`
+(agent loop).
+
+Build the installer: `cd desktop && npm install && npm run dist` (output in
+`desktop/dist`). The build is not code-signed, so Windows SmartScreen warns
+on first install; click "More info" > "Run anyway". There is no auto-update
+yet: install new versions over the old one.

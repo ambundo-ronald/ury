@@ -447,5 +447,18 @@
     "delete_digit": "Delete last digit",
     "cancel_title": "Manager approval: cancel order",
     "remove_title": "Manager approval: remove sent items"
+  },
+  "print_alerts": {
+    "title": "Printing problems",
+    "hide": "Hide",
+    "badge": "Printing problems ({{count}})",
+    "toast": "Did not print: {{label}}",
+    "reprint": "Reprint",
+    "dismiss": "Dismiss",
+    "sent_again": "Sent to the printer again.",
+    "still_failing": "Still not printing. Check the printer.",
+    "action_failed": "Could not do that. Try again.",
+    "agent_offline": "The print PC \"{{agent}}\" is not connected. Tickets will wait until it is back. Check it is switched on and online.",
+    "waiting": "{{count}} waiting to print"
   }
 }
