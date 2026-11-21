@@ -46,6 +46,7 @@ page_js = {"point-of-sale": ["public/js/pos_extend.js"]}
 
 # include js in doctype views
 # doctype_js = {"POS Invoive" : "public/js/pos_print.js"}
+doctype_js = {"Network Printer Settings": "public/js/network_printer_settings.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -171,6 +172,9 @@ before_uninstall = "ury.uninstall.uninstall"
 # override_doctype_class = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
+override_doctype_class = {
+    "Network Printer Settings": "ury.ury.printing.network_printer.URYNetworkPrinterSettings"
+}
 
 # Document Events
 # ---------------
