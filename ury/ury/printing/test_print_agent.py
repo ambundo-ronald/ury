@@ -1,5 +1,8 @@
 """Print queue and print agent: routing, pairing, polling, reporting, POS alerts."""
 
+import json
+import sys
+import types
 from unittest.mock import patch
 
 import frappe
@@ -98,6 +101,32 @@ class TestPrintAgent(FrappeTestCase):
 		with patch.object(queue, "print_with_cups", return_value=None):
 			self.assertEqual(queue.send("ToDo", self.todo.name, CUPS_PRINTER, branch=BRANCH), "Printed")
 		self.assertFalse(frappe.get_all("URY Print Job", filters={"printer": CUPS_PRINTER}))
+
+	def test_without_pycups_the_error_says_to_add_the_printer_to_an_agent(self):
+		with patch.dict(sys.modules, {"cups": None}), patch(
+			"frappe.utils.print_format.print_by_server"
+		) as print_by_server:
+			error = queue.print_with_cups("ToDo", self.todo.name, CUPS_PRINTER, None)
+		print_by_server.assert_not_called()
+		self.assertIn(CUPS_PRINTER, error)
+		self.assertIn("URY Print Agent", error)
+		self.assertNotIn("pycups", error)
+
+	def test_with_pycups_the_print_server_is_used(self):
+		with patch.dict(sys.modules, {"cups": types.ModuleType("cups")}), patch(
+			"frappe.utils.print_format.print_by_server"
+		) as print_by_server:
+			self.assertIsNone(queue.print_with_cups("ToDo", self.todo.name, CUPS_PRINTER, None))
+		print_by_server.assert_called_once_with("ToDo", self.todo.name, CUPS_PRINTER, None)
+
+	def test_reprint_after_adding_the_printer_to_the_agent_queues_it(self):
+		with patch.object(queue, "print_with_cups", return_value="no agent"), patch.object(frappe, "publish_realtime"):
+			self.assertEqual(queue.send("ToDo", self.todo.name, CUPS_PRINTER, branch=BRANCH), "Failed")
+		job = frappe.get_all("URY Print Job", filters={"printer": CUPS_PRINTER}, pluck="name")[0]
+		self.agent.append("printers", {"printer": CUPS_PRINTER, "windows_printer": "XP-80C Kitchen"})
+		self.agent.save(ignore_permissions=True)
+		self.assertEqual(queue.retry(job), "Queued")
+		self.assertEqual(frappe.db.get_value("URY Print Job", job, "agent"), "TEST-PC")
 
 	# Pairing
 
@@ -251,3 +280,52 @@ class TestPrintAgent(FrappeTestCase):
 		with self._as_agent(token):
 			jobs = agent.poll()["jobs"]
 		self.assertIn("combined slip", jobs[0]["html"])
+
+
+class TestKitchenOrderTicketFormat(FrappeTestCase):
+	"""The kitchen ticket shipped with URY renders new, added, cancelled and takeaway tickets."""
+
+	def setUp(self):
+		path = frappe.get_app_path("ury", "ury", "print_format", "ury_kitchen_order_ticket", "ury_kitchen_order_ticket.json")
+		with open(path) as f:
+			self.format = json.load(f)
+
+	def _render(self, **fields):
+		kot = frappe.get_doc(
+			{
+				"doctype": "URY KOT",
+				"name": "KOT-T-0001",
+				"production": "Kitchen - Test Co",
+				"restaurant_table": "T4",
+				"table_takeaway": 0,
+				"type": "New Order",
+				"date": "2026-11-21",
+				"time": "18:30:00",
+				"order_no": "7",
+				"kot_items": [{"item": "ITEM-1", "item_name": "Chicken Biryani", "quantity": "2", "comments": "no onion"}],
+				**fields,
+			}
+		)
+		return frappe.render_template(self.format["html"], {"doc": kot})
+
+	def test_format_is_for_kot(self):
+		self.assertEqual((self.format["name"], self.format["doc_type"]), ("URY Kitchen Order Ticket", "URY KOT"))
+
+	def test_new_order(self):
+		html = self._render()
+		for text in ("Kitchen", "T4", "KOT-T-0001", "Chicken Biryani", "no onion", ">2<"):
+			self.assertIn(text, html)
+		self.assertNotIn("CANCEL", html)
+
+	def test_added_items_and_takeaway(self):
+		html = self._render(type="Order Modified", restaurant_table=None)
+		self.assertIn("ADDED ITEMS", html)
+		self.assertIn("Takeaway #7", html)
+
+	def test_partial_cancel_shows_what_changed(self):
+		html = self._render(
+			type="Partially cancelled",
+			kot_items=[{"item": "ITEM-1", "item_name": "Chicken Biryani", "quantity": "3", "cancelled_qty": "1"}],
+		)
+		self.assertIn("CANCEL", html)
+		self.assertIn("was 3, now 2", html)

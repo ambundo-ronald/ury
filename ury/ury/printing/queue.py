@@ -90,6 +90,16 @@ def print_with_cups(doctype, name, printer_setting, print_format):
 	from frappe.utils.print_format import print_by_server
 
 	try:
+		import cups  # noqa: F401
+	except ImportError:
+		# A cloud site has no print server; the printer most likely just
+		# needs adding to the print agent. Say that instead of "install pycups".
+		return _(
+			"Printer {0} is not on any URY Print Agent. Add it to the agent's Printers table "
+			"(this server has no print server of its own)."
+		).format(printer_setting)
+
+	try:
 		print_by_server(doctype, name, printer_setting, print_format)
 		return None
 	except Exception as e:
