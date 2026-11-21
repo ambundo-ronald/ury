@@ -73,6 +73,20 @@ window, section **POS screen**:
 - **Full screen:** on or off. **F11** switches it while the POS is open, and so
   does tray menu > POS full screen.
 
+- **Keyboard button:** a round blue button floats on the left edge of the POS.
+  Tap it to open the Windows On-Screen Keyboard, which types into the box
+  being edited; close the keyboard with its ✕. Drag the button to move it,
+  and it stays where it was left. Switch it off in the Printing window or the
+  tray menu.
+
+On a touch screen, Windows can also pop up its touch keyboard by itself when
+a text box is tapped. If Settings > Time & language > Typing > Touch keyboard
+is not shown, run this once in PowerShell on the POS PC, as the staff user:
+
+```powershell
+reg add HKCU\Software\Microsoft\TabletTip\1.7 /v TouchKeyboardTapInvoke /t REG_DWORD /d 2 /f
+```
+
 If the site cannot be reached, the window shows "Can't reach URY" and tries
 again every 15 seconds instead of a blank page.
 

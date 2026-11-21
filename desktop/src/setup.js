@@ -92,6 +92,7 @@ async function load() {
   $('open-pos').disabled = !state.siteUrl;
   $('start-page').value = state.startPage || 'station';
   $('full-screen').checked = state.fullScreen !== false;
+  $('keyboard-button').checked = state.keyboardButton !== false;
   renderStatus(state.status);
   renderUpdate(state.update);
 }
@@ -145,6 +146,7 @@ async function saveScreen(settings) {
 }
 $('start-page').addEventListener('change', () => saveScreen({ startPage: $('start-page').value }));
 $('full-screen').addEventListener('change', () => saveScreen({ fullScreen: $('full-screen').checked }));
+$('keyboard-button').addEventListener('change', () => saveScreen({ keyboardButton: $('keyboard-button').checked }));
 
 $('refresh').addEventListener('click', loadPrinters);
 $('open-pos').addEventListener('click', async () => {

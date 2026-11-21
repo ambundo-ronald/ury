@@ -10,6 +10,7 @@ const configModule = require('./config');
 const { PrintAgent, pair } = require('./agent');
 const printer = require('./printer');
 const { Updater } = require('./updater');
+const { KeyboardButton } = require('./keyboard');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -21,6 +22,7 @@ let setupWindow = null;
 let tray = null;
 let agent = null;
 let updater = null;
+let keyboardButton = null;
 let config = null;
 let quitting = false;
 
@@ -40,6 +42,20 @@ function stateStore() {
       fs.writeFileSync(file, JSON.stringify(state));
     },
   };
+}
+
+/** The keyboard button shows only over a visible POS window, and only if switched on. */
+function syncKeyboardButton() {
+  if (!keyboardButton) return;
+  const visible = posWindow && !posWindow.isDestroyed() && posWindow.isVisible() && !posWindow.isMinimized();
+  if (visible && config.get().keyboardButton) keyboardButton.show(posWindow);
+  else keyboardButton.hide();
+}
+
+function setKeyboardButton(on) {
+  config.setScreen({ keyboardButton: on });
+  syncKeyboardButton();
+  refreshTray();
 }
 
 function setFullScreen(on) {
@@ -71,6 +87,9 @@ function openPos() {
   posWindow.setMenu(null);
   if (!fullScreen) posWindow.maximize();
   posWindow.once('ready-to-show', () => posWindow.show());
+  for (const event of ['show', 'hide', 'minimize', 'restore', 'closed', 'enter-full-screen', 'leave-full-screen']) {
+    posWindow.on(event, syncKeyboardButton);
+  }
 
   const contents = posWindow.webContents;
   // An app, not a browser: fixed size (no pinch or Ctrl+wheel zoom), F11 for full screen.
@@ -183,6 +202,12 @@ function refreshTray() {
         click: (item) => setFullScreen(item.checked),
       },
       {
+        label: 'Keyboard button on the POS',
+        type: 'checkbox',
+        checked: config.get().keyboardButton,
+        click: (item) => setKeyboardButton(item.checked),
+      },
+      {
         label: 'Start with Windows',
         type: 'checkbox',
         checked: startsWithWindows,
@@ -222,13 +247,14 @@ function sendUpdateStatus() {
 
 function setupIpc() {
   ipcMain.handle('get-state', () => {
-    const { siteUrl, agentName, branch, token, startPage, fullScreen } = config.get();
+    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton } = config.get();
     return {
       siteUrl,
       agentName,
       branch,
       startPage,
       fullScreen,
+      keyboardButton: showKeyboardButton,
       paired: Boolean(token),
       status: agent.status,
       update: updater.status,
@@ -236,9 +262,10 @@ function setupIpc() {
     };
   });
 
-  ipcMain.handle('set-screen', (_event, { startPage, fullScreen }) => {
+  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton }) => {
     const before = config.get();
     config.setScreen({ startPage, fullScreen });
+    if (showKeyboardButton !== undefined) setKeyboardButton(Boolean(showKeyboardButton));
     if (fullScreen !== undefined && Boolean(fullScreen) !== before.fullScreen) setFullScreen(Boolean(fullScreen));
     // A different start page applies when the POS window opens next; reload it now if open.
     if (startPage !== undefined && startPage !== before.startPage && posWindow && !posWindow.isDestroyed()) {
@@ -326,6 +353,11 @@ app.whenReady().then(() => {
     agent.stop();
   });
   updater.start();
+
+  keyboardButton = new KeyboardButton({
+    getPosition: () => config.get().keyboardButtonPosition,
+    savePosition: (position) => config.setScreen({ keyboardButtonPosition: position }),
+  });
 
   setupIpc();
   tray = new Tray(icon());

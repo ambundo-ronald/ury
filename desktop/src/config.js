@@ -52,12 +52,17 @@ function create({ dir, safeStorage }) {
         // The POS window: the station PIN screen or the normal login, full screen or not.
         startPage: data.startPage === 'login' ? 'login' : 'station',
         fullScreen: data.fullScreen !== false,
+        // Floating button over the POS that opens the on-screen keyboard, and where it was left.
+        keyboardButton: data.keyboardButton !== false,
+        keyboardButtonPosition: validPosition(data.keyboardButtonPosition),
       };
     },
-    setScreen({ startPage, fullScreen }) {
+    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition }) {
       const data = read();
       if (startPage !== undefined) data.startPage = startPage === 'login' ? 'login' : 'station';
       if (fullScreen !== undefined) data.fullScreen = Boolean(fullScreen);
+      if (keyboardButton !== undefined) data.keyboardButton = Boolean(keyboardButton);
+      if (keyboardButtonPosition !== undefined) data.keyboardButtonPosition = validPosition(keyboardButtonPosition);
       write(data);
     },
     setSite(siteUrl) {
@@ -84,6 +89,11 @@ function normaliseSiteUrl(input) {
     throw new Error('The site address must start with https://');
   }
   return url.origin;
+}
+
+function validPosition(position) {
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return null;
+  return { x: Math.round(position.x), y: Math.round(position.y) };
 }
 
 /** Where the POS window opens: the station PIN screen, or URY's normal login (which leads to the POS). */

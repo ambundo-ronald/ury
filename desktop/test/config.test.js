@@ -34,6 +34,20 @@ test('screen settings are saved and kept with the pairing', () => {
   fs.rmSync(dir, { recursive: true });
 });
 
+test('the keyboard button is on by default and remembers where it was left', () => {
+  const { config, dir } = tempConfig();
+  assert.strictEqual(config.get().keyboardButton, true);
+  assert.strictEqual(config.get().keyboardButtonPosition, null);
+
+  config.setScreen({ keyboardButton: false, keyboardButtonPosition: { x: 40.4, y: 600.6 } });
+  assert.strictEqual(config.get().keyboardButton, false);
+  assert.deepStrictEqual(config.get().keyboardButtonPosition, { x: 40, y: 601 });
+
+  config.setScreen({ keyboardButtonPosition: { x: 'left', y: 5 } });
+  assert.strictEqual(config.get().keyboardButtonPosition, null);
+  fs.rmSync(dir, { recursive: true });
+});
+
 test('start URL is the station page or the POS on the site', () => {
   assert.strictEqual(posStartUrl('https://pos.example.com', 'station'), 'https://pos.example.com/station');
   assert.strictEqual(posStartUrl('https://pos.example.com/', 'login'), 'https://pos.example.com/pos');
