@@ -31,10 +31,15 @@ The PC must stay switched on during service. Set it never to sleep.
 ### 2. The printers in URY
 
 Each printer used in a production unit, room or POS Profile is a
-**Network Printer Settings** record (Desk > Network Printer Settings). For a
-printer printed by the app, the Server IP, Port and Printer Name fields are
-not used, but Frappe requires them: enter the printer's IP, `9100` and its
-name.
+**Network Printer Settings** record (Desk > Network Printer Settings > New).
+For a printer printed by the app, these fields are not used, but Frappe
+requires them:
+
+- **Name:** what URY shows, e.g. `Kitchen Printer`.
+- **Server IP** and **Port:** leave `localhost` and `631`.
+- **Printer Name:** the list only fills from a print server (CUPS), so on a
+  cloud site it is empty. Click **Type Printer Name** and enter any name,
+  for example the Windows name of the printer.
 
 Pick these printers as usual:
 - **Kitchen tickets:** URY Production Unit > printers, with "KOT print" ticked
