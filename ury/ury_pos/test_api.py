@@ -339,6 +339,7 @@ class TestUryPosApi(unittest.TestCase):
 
 
 
+
 class TestGetAllowedPosProfiles(unittest.TestCase):
     @patch("ury.ury_pos.api.frappe.get_all")
     def test_no_company_returns_empty(self, mock_get_all):
@@ -713,3 +714,50 @@ class TestSubmitChecklistSEC10(FrappeTestCase):
                 checklist_type="Opening",
                 items=items
             )
+
+
+class TestCreateCustomerDefaults(FrappeTestCase):
+    """The POS sends only a name and phone unless the cashier picks a group or territory."""
+
+    def setUp(self):
+        frappe.set_user("Administrator")
+        if frappe.db.exists("Customer", "Test Auth Customer"):
+            frappe.delete_doc("Customer", "Test Auth Customer", ignore_permissions=True, force=1)
+        # A bare site has no territories or groups; give it one of each.
+        for doctype, parent_field in (("Territory", "parent_territory"), ("Customer Group", "parent_customer_group")):
+            if frappe.db.exists(doctype, {"is_group": 0}):
+                continue
+            root = f"URY Test {doctype} Root"
+            if not frappe.db.exists(doctype, root):
+                frappe.get_doc({"doctype": doctype, frappe.scrub(doctype) + "_name": root, "is_group": 1}).insert()
+            frappe.get_doc(
+                {"doctype": doctype, frappe.scrub(doctype) + "_name": f"URY Test {doctype}", parent_field: root}
+            ).insert()
+
+    def test_blank_or_unknown_territory_and_group_use_site_defaults(self):
+        frappe.set_user("Administrator")
+
+        result = create_customer("Test Auth Customer", "+254712345678", territory="No Such Territory")
+
+        self.assertEqual(result.get("status"), "success", result)
+        self.assertEqual(result.get("name"), "Test Auth Customer")
+        customer = frappe.db.get_value(
+            "Customer", "Test Auth Customer", ["territory", "customer_group"], as_dict=True
+        )
+        self.assertTrue(frappe.db.exists("Territory", {"name": customer.territory, "is_group": 0}))
+        self.assertTrue(frappe.db.exists("Customer Group", {"name": customer.customer_group, "is_group": 0}))
+
+    def test_failure_returns_the_reason(self):
+        frappe.set_user("Administrator")
+
+        with patch("erpnext.selling.doctype.customer.customer.Customer.insert", create=True, side_effect=frappe.ValidationError("<b>Bad</b> data")):
+            result = create_customer("Test Auth Customer", "+254712345678")
+
+        self.assertEqual(result, {"status": "error", "message": "Bad data"})
+
+    def test_invalid_phone_or_missing_name_returns_the_reason(self):
+        result = create_customer("Test Auth Customer", "abc")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("abc", result["message"])
+        self.assertEqual(create_customer("  ", "+254712345678")["status"], "error")
+        self.assertFalse(frappe.db.exists("Customer", "Test Auth Customer"))
