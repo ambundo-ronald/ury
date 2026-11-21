@@ -49,7 +49,16 @@ function create({ dir, safeStorage }) {
         agentName: data.agentName || '',
         branch: data.branch || '',
         token: decrypt(data.token),
+        // The POS window: the station PIN screen or the normal login, full screen or not.
+        startPage: data.startPage === 'login' ? 'login' : 'station',
+        fullScreen: data.fullScreen !== false,
       };
+    },
+    setScreen({ startPage, fullScreen }) {
+      const data = read();
+      if (startPage !== undefined) data.startPage = startPage === 'login' ? 'login' : 'station';
+      if (fullScreen !== undefined) data.fullScreen = Boolean(fullScreen);
+      write(data);
     },
     setSite(siteUrl) {
       write({ ...read(), siteUrl });
@@ -77,4 +86,9 @@ function normaliseSiteUrl(input) {
   return url.origin;
 }
 
-module.exports = { create, normaliseSiteUrl };
+/** Where the POS window opens: the station PIN screen, or URY's normal login (which leads to the POS). */
+function posStartUrl(siteUrl, startPage) {
+  return `${new URL(siteUrl).origin}${startPage === 'login' ? '/pos' : '/station'}`;
+}
+
+module.exports = { create, normaliseSiteUrl, posStartUrl };
