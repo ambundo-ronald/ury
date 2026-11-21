@@ -28,6 +28,31 @@ def network_printing(
 ):
     validate_print_permission(frappe.get_doc(doctype, name))
 
+    from ury.ury.printing import queue
+
+    if queue.agent_for_printer(printer_setting):
+        # A PC at the restaurant prints it; the POS gets an alert if it fails.
+        queue.send(
+            doctype,
+            name,
+            printer_setting,
+            print_format,
+            branch=frappe.db.get_value(doctype, name, "branch") if doctype == "POS Invoice" else None,
+            label=_("Bill · {0}").format(
+                frappe.db.get_value(doctype, name, "restaurant_table") or name
+                if doctype == "POS Invoice"
+                else name
+            ),
+        )
+        if doctype == "POS Invoice":
+            restaurant_table, invoice_printed = frappe.db.get_value(
+                "POS Invoice", name, ["restaurant_table", "invoice_printed"]
+            )
+            frappe.db.set_value("POS Invoice", name, "invoice_printed", 1)
+            if restaurant_table and invoice_printed == 0:
+                release_merge_cluster_tables(restaurant_table)
+        return "Success"
+
     try:
         print_settings = frappe.get_doc("Network Printer Settings", printer_setting)
 

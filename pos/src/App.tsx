@@ -9,6 +9,7 @@ import AuthGuard from './components/AuthGuard';
 import POSOpeningProvider from './components/POSOpeningProvider';
 import ScreenSizeProvider from './components/ScreenSizeProvider';
 import KotAlertListener from './components/KotAlertListener';
+import PrintAlerts from './components/PrintAlerts';
 import StationSession from './components/StationSession';
 import { ManagerApprovalProvider } from './components/ManagerApproval';
 import CaptainRouteGuard from './captain/components/CaptainRouteGuard';
@@ -40,6 +41,7 @@ function App() {
       <KotAlertListener />
       <ScreenSizeProvider>
         <AuthGuard>
+          <PrintAlerts />
           <ManagerApprovalProvider>
           <StationSession />
           <POSOpeningProvider>

@@ -4,7 +4,7 @@
 import frappe
 import requests
 import json
-from frappe.utils.print_format import print_by_server
+from frappe import _
 from frappe.model.document import Document
 
 
@@ -20,11 +20,21 @@ class URYKOT(Document):
     def multi_print_kot(self):
         # Function for printing a KOT on a specified printer using a print format.
         def print_kot(printer, kot_print_format):
+            # Goes to the printer's print agent, or to CUPS. A failure is kept
+            # as a failed URY Print Job and shown on the POS, never dropped.
+            from ury.ury.printing import queue
+
             try:
-                # Print KOT using a server function (print_by_server)
-                print_by_server("URY KOT", self.name, printer, kot_print_format)
-            except:
-                pass
+                queue.send(
+                    "URY KOT",
+                    self.name,
+                    printer,
+                    kot_print_format,
+                    branch=self.branch,
+                    label=self.print_label(),
+                )
+            except Exception:
+                frappe.log_error(title="KOT print failed", reference_doctype="URY KOT", reference_name=self.name)
 
         
         pos_kot_printers = frappe.db.get_all(
@@ -108,6 +118,14 @@ class URYKOT(Document):
             {"kot": kotjson, "audio_file": audio_file, "last_kot_time": time},
         )
         frappe.cache().set_value(cache_key, self.time)
+
+    def print_label(self):
+        """Short text the cashier sees if this ticket does not print."""
+        where = self.restaurant_table or (f"Order {self.order_no}" if self.order_no else self.invoice)
+        parts = [_("KOT"), self.production, where]
+        if self.type and self.type != "New Order":
+            parts.append(self.type)
+        return " · ".join(str(p) for p in parts if p)
 
     def userSetting(self):
         userDoc = frappe.get_doc("User", self.owner)

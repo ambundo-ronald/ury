@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2026-11-21 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "printer",
+  "windows_printer"
+ ],
+ "fields": [
+  {
+   "fieldname": "printer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "URY Printer",
+   "options": "Network Printer Settings",
+   "reqd": 1,
+   "description": "The printer chosen in production units, rooms and POS profiles."
+  },
+  {
+   "fieldname": "windows_printer",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Windows Printer Name",
+   "reqd": 1,
+   "description": "Exactly as Windows shows it on the agent PC. See Printers Found On This PC."
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-11-21 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "URY",
+ "name": "URY Print Agent Printer",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
