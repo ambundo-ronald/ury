@@ -953,19 +953,34 @@ def getAggregatorMOP(aggregator):
             {"mode_of_payment": modeOfPayment, "opening_amount": float(0)}
     )
     return modeOfPaymentsList
+def _customer_default(doctype, value, selling_settings_field):
+    """`value` if it exists, else the Selling Settings default, else the first
+    non-group record. The POS leaves Customer Group and Territory blank unless
+    the cashier picks them, and a hard-coded default ("India") broke customer
+    creation on every site without that territory."""
+    if value and frappe.db.exists(doctype, value):
+        return value
+    default = frappe.db.get_single_value("Selling Settings", selling_settings_field)
+    if default and frappe.db.exists(doctype, default):
+        return default
+    return frappe.db.get_value(doctype, {"is_group": 0}, "name", order_by="lft asc")
+
+
 @frappe.whitelist()
-def create_customer(customer_name, mobile_number=None, customer_group="Individual", territory="India"):
+def create_customer(customer_name, mobile_number=None, customer_group=None, territory=None):
     if not frappe.has_permission("Customer", "create"):
         frappe.throw("Not permitted to create customers", frappe.PermissionError)
         
-    if not customer_name:
-        frappe.throw("Customer name is required")
-    if not mobile_number:
-        frappe.throw("Mobile Number is required")
-    try:
-        validate_phone_number(mobile_number, throw=True)
-    except Exception:
-        frappe.throw("Invalid mobile number format")
+    # Returned rather than raised, so the POS shows the reason in its form.
+    if not (customer_name or "").strip():
+        return {"status": "error", "message": _("Customer name is required")}
+    if not (mobile_number or "").strip():
+        return {"status": "error", "message": _("Mobile Number is required")}
+    if not validate_phone_number(mobile_number):
+        return {"status": "error", "message": _("{0} is not a valid mobile number").format(mobile_number)}
+
+    customer_group = _customer_default("Customer Group", customer_group, "customer_group")
+    territory = _customer_default("Territory", territory, "territory")
 
     """Create a new customer"""
     try:
@@ -982,6 +997,8 @@ def create_customer(customer_name, mobile_number=None, customer_group="Individua
         return {
             "status": "success",
             "message": "Customer created successfully",
+            # The record's ID, which differs from the name when the name is taken.
+            "name": customer.name,
             "customer_name": customer_name,
             "mobile_number": mobile_number,
             "customer_group": customer_group,
@@ -989,10 +1006,13 @@ def create_customer(customer_name, mobile_number=None, customer_group="Individua
         }
 
     except Exception as e:
+        frappe.db.rollback()
         frappe.log_error(message=frappe.get_traceback(), title="Customer Creation Failed")
+        # The POS shows this message; drop the duplicate queued by frappe.throw.
+        frappe.clear_messages()
         return {
             "status": "error",
-            "message": str(e)
+            "message": frappe.utils.strip_html(str(e)) or "Could not create the customer",
         }
 
 @frappe.whitelist()

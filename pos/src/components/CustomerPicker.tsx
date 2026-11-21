@@ -166,13 +166,15 @@ export function CustomerPicker({ value, onChange, disabled }: CustomerPickerProp
   const [prefillPhone, setPrefillPhone] = useState('');
 
   useEffect(() => {
-    if (!isOpen || !searchTerm.trim()) {
+    if (!isOpen) {
       setSearchResults([]);
       setSearchError(null);
       setIsSearching(false);
       return;
     }
+    // An empty box lists recent customers, so the list shows on opening.
     setIsSearching(true);
+    setSearchError(null);
     const handler = setTimeout(() => {
       searchCustomers(searchTerm)
         .then((results) => {
