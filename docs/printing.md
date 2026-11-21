@@ -61,6 +61,25 @@ Pick these printers as usual:
    row for each URY printer with its Windows name exactly as listed.
 5. In the app, choose a printer and click **Test print**.
 
+### 4. The POS screen
+
+The POS window opens on the **station sign-in** page, where staff enter their
+PIN, and fills the whole screen with no title bar, menus or address bar. After
+the PIN, staff get the normal URY POS. To change this, open the **Printing**
+window, section **POS screen**:
+
+- **Opens on:** Station sign-in (PIN) or Normal login (email and password).
+  On the station page, **Staff login** also leads to the normal login.
+- **Full screen:** on or off. **F11** switches it while the POS is open, and so
+  does tray menu > POS full screen.
+
+If the site cannot be reached, the window shows "Can't reach URY" and tries
+again every 15 seconds instead of a blank page.
+
+To lock the PC to the POS alone (no desktop or other apps), set up Windows
+**Assigned Access** (kiosk mode) for a dedicated Windows user, with URY POS
+as its app.
+
 After pairing, the app starts with Windows (tray menu > Start with Windows).
 Closing the POS window keeps printing; only tray menu > Quit stops it.
 

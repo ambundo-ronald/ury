@@ -90,6 +90,8 @@ async function load() {
   $('unpair').classList.toggle('hidden', !state.paired);
   $('paired-as').textContent = state.paired ? `Paired as ${state.agentName} (${state.branch}) on ${state.siteUrl}` : '';
   $('open-pos').disabled = !state.siteUrl;
+  $('start-page').value = state.startPage || 'station';
+  $('full-screen').checked = state.fullScreen !== false;
   renderStatus(state.status);
   renderUpdate(state.update);
 }
@@ -132,6 +134,17 @@ $('test').addEventListener('click', async () => {
     $('test').disabled = false;
   }
 });
+
+async function saveScreen(settings) {
+  try {
+    await window.ury.setScreen(settings);
+    showResult($('screen-result'), true, 'Saved.');
+  } catch (error) {
+    showResult($('screen-result'), false, cleanError(error));
+  }
+}
+$('start-page').addEventListener('change', () => saveScreen({ startPage: $('start-page').value }));
+$('full-screen').addEventListener('change', () => saveScreen({ fullScreen: $('full-screen').checked }));
 
 $('refresh').addEventListener('click', loadPrinters);
 $('open-pos').addEventListener('click', async () => {

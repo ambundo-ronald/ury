@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>URY POS</title>
+  <style>
+    /* Same look as the URY station screen and POS. */
+    :root { --bg: #f5f5f8; --text: #020817; --muted: #64748b; --line: #e2e8f0; --primary: #2563eb; --primary-hover: #1d4ed8; --radius: 0.5rem; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--bg); color: var(--text); font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+    .card { width: 100%; max-width: 420px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 24px; text-align: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1); }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; }
+    p { margin: 0 0 6px; color: var(--muted); }
+    .reason { font-size: .85rem; }
+    button { margin-top: 18px; width: 100%; height: 56px; font: inherit; font-size: 1.15rem; font-weight: 600; color: #f8fafc; background: var(--primary); border: 0; border-radius: var(--radius); cursor: pointer; }
+    button:hover { background: var(--primary-hover); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Can't reach URY</h1>
+    <p>Check the internet connection. Kitchen tickets keep waiting on the site and print when it is back.</p>
+    <p class="reason" id="reason"></p>
+    <p id="countdown"></p>
+    <button id="retry" type="button">Try again</button>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const target = params.get('url') || '';
+    document.getElementById('reason').textContent = params.get('reason') || '';
+    const retry = () => { if (/^https?:\/\//.test(target)) location.href = target; };
+    document.getElementById('retry').addEventListener('click', retry);
+    let left = 15;
+    const tick = () => {
+      document.getElementById('countdown').textContent = `Trying again in ${left} s`;
+      if (left-- <= 0) retry(); else setTimeout(tick, 1000);
+    };
+    tick();
+  </script>
+</body>
+</html>

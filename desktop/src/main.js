@@ -42,8 +42,14 @@ function stateStore() {
   };
 }
 
+function setFullScreen(on) {
+  config.setScreen({ fullScreen: on });
+  if (posWindow && !posWindow.isDestroyed()) posWindow.setFullScreen(on);
+  refreshTray();
+}
+
 function openPos() {
-  const { siteUrl } = config.get();
+  const { siteUrl, startPage, fullScreen } = config.get();
   if (!siteUrl) return openSetup();
   if (posWindow && !posWindow.isDestroyed()) {
     posWindow.show();
@@ -55,14 +61,44 @@ function openPos() {
     height: 860,
     title: 'URY POS',
     icon: icon(),
+    show: false,
+    fullscreen: fullScreen,
     autoHideMenuBar: true,
+    // The POS's own background, so there is no white flash while it loads.
+    backgroundColor: '#f5f5f8',
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  posWindow.maximize();
+  posWindow.setMenu(null);
+  if (!fullScreen) posWindow.maximize();
+  posWindow.once('ready-to-show', () => posWindow.show());
+
+  const contents = posWindow.webContents;
+  // An app, not a browser: fixed size (no pinch or Ctrl+wheel zoom), F11 for full screen.
+  contents.setVisualZoomLevelLimits(1, 1);
+  contents.on('zoom-changed', () => contents.setZoomLevel(0));
+  contents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F11') {
+      event.preventDefault();
+      setFullScreen(!posWindow.isFullScreen());
+    } else if (input.control && ['+', '-', '=', '0'].includes(input.key)) {
+      event.preventDefault();
+    }
+  });
 
   const origin = new URL(siteUrl).origin;
+  const startUrl = configModule.posStartUrl(siteUrl, startPage);
+  // No connection: show a page that says so and retries, instead of a white window.
+  contents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    if (!isMainFrame || code === -3) return; // -3: navigation replaced by another
+    posWindow.loadFile(path.join(__dirname, 'offline.html'), {
+      query: { url: url && url.startsWith(origin) ? url : startUrl, reason: description || String(code) },
+    });
+  });
   // Stay on the URY site; anything else opens in the normal browser.
   posWindow.webContents.on('will-navigate', (event, url) => {
+    // The offline page sends the window back to the site with Retry.
+    if (url.startsWith('file:')) return;
     if (new URL(url).origin !== origin) {
       event.preventDefault();
       shell.openExternal(url);
@@ -80,7 +116,7 @@ function openPos() {
       posWindow.hide();
     }
   });
-  posWindow.loadURL(`${origin}/pos`);
+  posWindow.loadURL(startUrl);
 }
 
 function openSetup() {
@@ -141,6 +177,12 @@ function refreshTray() {
       { label: trayLabel(status), enabled: false },
       ...updateMenuItems(),
       {
+        label: 'POS full screen (F11)',
+        type: 'checkbox',
+        checked: config.get().fullScreen,
+        click: (item) => setFullScreen(item.checked),
+      },
+      {
         label: 'Start with Windows',
         type: 'checkbox',
         checked: startsWithWindows,
@@ -180,16 +222,30 @@ function sendUpdateStatus() {
 
 function setupIpc() {
   ipcMain.handle('get-state', () => {
-    const { siteUrl, agentName, branch, token } = config.get();
+    const { siteUrl, agentName, branch, token, startPage, fullScreen } = config.get();
     return {
       siteUrl,
       agentName,
       branch,
+      startPage,
+      fullScreen,
       paired: Boolean(token),
       status: agent.status,
       update: updater.status,
       version: app.getVersion(),
     };
+  });
+
+  ipcMain.handle('set-screen', (_event, { startPage, fullScreen }) => {
+    const before = config.get();
+    config.setScreen({ startPage, fullScreen });
+    if (fullScreen !== undefined && Boolean(fullScreen) !== before.fullScreen) setFullScreen(Boolean(fullScreen));
+    // A different start page applies when the POS window opens next; reload it now if open.
+    if (startPage !== undefined && startPage !== before.startPage && posWindow && !posWindow.isDestroyed()) {
+      const now = config.get();
+      posWindow.loadURL(configModule.posStartUrl(now.siteUrl, now.startPage));
+    }
+    return true;
   });
 
   ipcMain.handle('check-update', () => updater.check());
