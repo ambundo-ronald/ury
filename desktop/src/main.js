@@ -94,7 +94,9 @@ function openPos() {
   const contents = posWindow.webContents;
   // An app, not a browser: fixed size (no pinch or Ctrl+wheel zoom), F11 for full screen.
   contents.setVisualZoomLevelLimits(1, 1);
-  contents.on('zoom-changed', () => contents.setZoomLevel(0));
+  const applyTextSize = () => contents.setZoomFactor(config.get().textSize);
+  contents.on('zoom-changed', applyTextSize);
+  contents.on('did-finish-load', applyTextSize);
   contents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
     if (input.key === 'F11') {
@@ -247,7 +249,7 @@ function sendUpdateStatus() {
 
 function setupIpc() {
   ipcMain.handle('get-state', () => {
-    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton } = config.get();
+    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, textSize } = config.get();
     return {
       siteUrl,
       agentName,
@@ -255,6 +257,7 @@ function setupIpc() {
       startPage,
       fullScreen,
       keyboardButton: showKeyboardButton,
+      textSize,
       paired: Boolean(token),
       status: agent.status,
       update: updater.status,
@@ -262,9 +265,12 @@ function setupIpc() {
     };
   });
 
-  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton }) => {
+  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton, textSize }) => {
     const before = config.get();
-    config.setScreen({ startPage, fullScreen });
+    config.setScreen({ startPage, fullScreen, textSize });
+    if (textSize !== undefined && posWindow && !posWindow.isDestroyed()) {
+      posWindow.webContents.setZoomFactor(config.get().textSize);
+    }
     if (showKeyboardButton !== undefined) setKeyboardButton(Boolean(showKeyboardButton));
     if (fullScreen !== undefined && Boolean(fullScreen) !== before.fullScreen) setFullScreen(Boolean(fullScreen));
     // A different start page applies when the POS window opens next; reload it now if open.
