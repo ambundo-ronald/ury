@@ -46,6 +46,14 @@ function renderStatus(status) {
   }
 }
 
+let escposPrinters = [];
+
+function renderEscpos() {
+  const name = $('printers').value;
+  $('escpos').disabled = !name;
+  $('escpos').checked = Boolean(name) && escposPrinters.includes(name);
+}
+
 async function loadPrinters() {
   const select = $('printers');
   select.innerHTML = '';
@@ -56,6 +64,9 @@ async function loadPrinters() {
       option.value = option.textContent = name;
       select.appendChild(option);
     }
+    // Show a receipt printer first if one is already set to ESC/POS.
+    const direct = names.find((name) => escposPrinters.includes(name));
+    if (direct) select.value = direct;
     if (!names.length) {
       const option = document.createElement('option');
       option.textContent = 'No printers installed in Windows';
@@ -65,6 +76,7 @@ async function loadPrinters() {
   } catch (error) {
     showResult($('test-result'), false, cleanError(error));
   }
+  renderEscpos();
 }
 
 function renderUpdate(update) {
@@ -102,6 +114,8 @@ async function load() {
   $('keyboard-button').checked = state.keyboardButton !== false;
   $('update-button').checked = state.updateButton !== false;
   $('print-as-picture').checked = state.printAsPicture !== false;
+  escposPrinters = state.escposPrinters || [];
+  renderEscpos();
   renderStatus(state.status);
   renderUpdate(state.update);
 }
@@ -157,6 +171,20 @@ $('text-size').addEventListener('change', () => saveScreen({ textSize: Number($(
 $('full-screen').addEventListener('change', () => saveScreen({ fullScreen: $('full-screen').checked }));
 $('keyboard-button').addEventListener('change', () => saveScreen({ keyboardButton: $('keyboard-button').checked }));
 $('update-button').addEventListener('change', () => saveScreen({ updateButton: $('update-button').checked }));
+$('printers').addEventListener('change', renderEscpos);
+$('escpos').addEventListener('change', async () => {
+  const name = $('printers').value;
+  if (!name) return;
+  try {
+    escposPrinters = await window.ury.setEscpos(name, $('escpos').checked);
+    showResult($('test-result'), true, $('escpos').checked
+      ? `${name} now gets tickets directly. Use Test print to check.`
+      : `${name} prints through its Windows driver again.`);
+  } catch (error) {
+    showResult($('test-result'), false, cleanError(error));
+  }
+  renderEscpos();
+});
 $('print-as-picture').addEventListener('change', async () => {
   try {
     await window.ury.setScreen({ printAsPicture: $('print-as-picture').checked });

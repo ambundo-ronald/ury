@@ -69,6 +69,15 @@ fine; a picture has no text to swap. To print as text instead, untick
 **Print tickets as a picture** under Printers on this PC. If a ticket cannot
 be drawn, the app prints it as text rather than not at all.
 
+**Still random characters? Send straight to the printer (ESC/POS).** With
+some drivers even a picture comes out as garbage, while Windows' own test
+page prints fine. Then skip the driver: under Printers on this PC, choose the
+printer and tick **Send straight to this receipt printer (ESC/POS)**, then
+**Test print**. The app draws the ticket at the printer's 576 dots (80 mm
+paper), sends it in ESC/POS, the language of receipt printers (Xprinter,
+Epson TM and most 58/80 mm thermal printers), and cuts the paper. The
+setting is per printer, so an office printer on the same PC is unaffected.
+
 ### 4. The POS screen
 
 The POS window opens on the **station sign-in** page, where staff enter their

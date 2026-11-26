@@ -98,7 +98,8 @@
     <label for="printers">Printer</label>
     <select id="printers"></select>
     <div class="row"><button id="refresh">Refresh list</button><button id="test">Test print</button></div>
-    <label class="check"><input type="checkbox" id="print-as-picture"> Print tickets as a picture (fixes random characters on some receipt printers)</label>
+    <label class="check"><input type="checkbox" id="escpos"> Send straight to this receipt printer (ESC/POS), skipping its Windows driver. Use this if tickets print as random characters.</label>
+    <label class="check"><input type="checkbox" id="print-as-picture"> Print tickets as a picture (for printers that go through their Windows driver)</label>
     <div id="test-result"></div>
   </section>
 

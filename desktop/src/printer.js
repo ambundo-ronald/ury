@@ -10,7 +10,9 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, nativeImage } = require('electron');
+const escpos = require('./escpos');
+const { printRaw } = require('./rawprint');
 
 const LOAD_TIMEOUT_MS = 20000;
 // Let images (logos) settle before printing or drawing.
@@ -143,9 +145,22 @@ async function printHtml(html, deviceName, { asPicture = true } = {}) {
   return withLoadedPage(page, {}, (win) => printLoaded(win, deviceName));
 }
 
+/**
+ * Prints straight to a receipt printer in ESC/POS, past its Windows driver:
+ * the ticket is drawn as a picture, shrunk to the printer's 576 dots and
+ * sent as a raster image with a cut at the end.
+ */
+async function printEscpos(html, deviceName) {
+  const picture = nativeImage.createFromBuffer(await renderPicture(html));
+  const sized = picture.resize({ width: escpos.DOTS_80MM, quality: 'best' });
+  const { width, height } = sized.getSize();
+  const bytes = escpos.encodeRaster(escpos.toMonochrome(sized.toBitmap(), width, height));
+  await printRaw(bytes, deviceName);
+}
+
 async function listPrinters(webContents) {
   const printers = await webContents.getPrintersAsync();
   return printers.map((p) => p.name);
 }
 
-module.exports = { printHtml, renderPicture, picturePage, listPrinters, PAPER_CSS_PX };
+module.exports = { printHtml, printEscpos, renderPicture, picturePage, listPrinters, PAPER_CSS_PX };
