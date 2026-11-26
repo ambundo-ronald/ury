@@ -59,9 +59,11 @@ function create({ dir, safeStorage }) {
         textSize: validTextSize(data.textSize),
         keyboardButtonPosition: validPosition(data.keyboardButtonPosition),
         updateButtonPosition: validPosition(data.updateButtonPosition),
+        // Print tickets as a picture, so receipt printer drivers cannot garble the text.
+        printAsPicture: data.printAsPicture !== false,
       };
     },
-    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition, updateButton, updateButtonPosition, textSize }) {
+    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition, updateButton, updateButtonPosition, textSize, printAsPicture }) {
       const data = read();
       if (startPage !== undefined) data.startPage = startPage === 'login' ? 'login' : 'station';
       if (fullScreen !== undefined) data.fullScreen = Boolean(fullScreen);
@@ -70,6 +72,7 @@ function create({ dir, safeStorage }) {
       if (keyboardButtonPosition !== undefined) data.keyboardButtonPosition = validPosition(keyboardButtonPosition);
       if (updateButton !== undefined) data.updateButton = Boolean(updateButton);
       if (updateButtonPosition !== undefined) data.updateButtonPosition = validPosition(updateButtonPosition);
+      if (printAsPicture !== undefined) data.printAsPicture = Boolean(printAsPicture);
       write(data);
     },
     setSite(siteUrl) {

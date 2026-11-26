@@ -84,3 +84,13 @@ test('site address needs https except on this computer', () => {
   assert.throws(() => normaliseSiteUrl('http://pos.example.com'), /https/);
   assert.strictEqual(normaliseSiteUrl('http://localhost:8000'), 'http://localhost:8000');
 });
+
+test('tickets print as a picture unless switched off', () => {
+  const { config, dir } = tempConfig();
+  assert.strictEqual(config.get().printAsPicture, true);
+  config.setScreen({ printAsPicture: false });
+  assert.strictEqual(config.get().printAsPicture, false);
+  config.setScreen({ textSize: 1 });
+  assert.strictEqual(config.get().printAsPicture, false);
+  fs.rmSync(dir, { recursive: true });
+});

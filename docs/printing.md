@@ -61,6 +61,14 @@ Pick these printers as usual:
    row for each URY printer with its Windows name exactly as listed.
 5. In the app, choose a printer and click **Test print**.
 
+**Tickets print as a picture.** The app first draws each ticket or bill at
+80 mm wide, then prints only the picture. Some receipt printer drivers
+(Xprinter and others) swap the page's fonts for the printer's own and print
+random characters instead of text, even though Windows' own test page prints
+fine; a picture has no text to swap. To print as text instead, untick
+**Print tickets as a picture** under Printers on this PC. If a ticket cannot
+be drawn, the app prints it as text rather than not at all.
+
 ### 4. The POS screen
 
 The POS window opens on the **station sign-in** page, where staff enter their

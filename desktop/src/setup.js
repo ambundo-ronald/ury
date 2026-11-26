@@ -101,6 +101,7 @@ async function load() {
   $('text-size').value = String(state.textSize || 0.875);
   $('keyboard-button').checked = state.keyboardButton !== false;
   $('update-button').checked = state.updateButton !== false;
+  $('print-as-picture').checked = state.printAsPicture !== false;
   renderStatus(state.status);
   renderUpdate(state.update);
 }
@@ -156,6 +157,14 @@ $('text-size').addEventListener('change', () => saveScreen({ textSize: Number($(
 $('full-screen').addEventListener('change', () => saveScreen({ fullScreen: $('full-screen').checked }));
 $('keyboard-button').addEventListener('change', () => saveScreen({ keyboardButton: $('keyboard-button').checked }));
 $('update-button').addEventListener('change', () => saveScreen({ updateButton: $('update-button').checked }));
+$('print-as-picture').addEventListener('change', async () => {
+  try {
+    await window.ury.setScreen({ printAsPicture: $('print-as-picture').checked });
+    showResult($('test-result'), true, 'Saved. Use Test print to check.');
+  } catch (error) {
+    showResult($('test-result'), false, cleanError(error));
+  }
+});
 
 $('refresh').addEventListener('click', loadPrinters);
 $('open-pos').addEventListener('click', async () => {
