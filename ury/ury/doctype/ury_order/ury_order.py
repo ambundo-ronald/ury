@@ -2053,6 +2053,15 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
         
     invoice.calculate_taxes_and_totals()
 
+    if isinstance(payments, str):
+        payments = json.loads(payments)
+    # M-Pesa payments the cashier picked or prompted for are claimed here, in
+    # this transaction: a failed settlement claims nothing, and a payment
+    # cannot pay two bills.
+    from ury.ury.payments import mpesa
+
+    mpesa.claim_for_invoice(invoice, payments)
+
     invoice.set("payments", [])
 
     if invoice.custom_merged_pos_invoice:
@@ -2070,13 +2079,13 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
             
             if doc_req > 0:
                 give = min(amt, doc_req)
-                invoice.append("payments", dict(mode_of_payment=mode, amount=give))
+                invoice.append("payments", dict(mode_of_payment=mode, amount=give, reference_no=d.get("reference_no")))
                 amt -= give
                 doc_req -= give
                 
             if target_req > 0 and amt > 0:
                 give = min(amt, target_req)
-                target.append("payments", dict(mode_of_payment=mode, amount=give))
+                target.append("payments", dict(mode_of_payment=mode, amount=give, reference_no=d.get("reference_no")))
                 amt -= give
                 target_req -= give
                 
@@ -2095,7 +2104,8 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
     else:
         for d in payments:
             invoice.append(
-                "payments", dict(mode_of_payment=d["mode_of_payment"], amount=d["amount"])
+                "payments",
+                dict(mode_of_payment=d["mode_of_payment"], amount=d["amount"], reference_no=d.get("reference_no")),
             )
 
     # Paid during the current shift: it belongs in that cashier's closing,

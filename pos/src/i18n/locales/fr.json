@@ -420,5 +420,26 @@
     "delete_digit": "Effacer le dernier chiffre",
     "cancel_title": "Approbation : annuler la commande",
     "remove_title": "Approbation : retirer des articles envoyés"
+  },
+  "mpesa": {
+    "button": "M-Pesa",
+    "received_tab": "Paiements reçus",
+    "prompt_tab": "Envoyer une demande",
+    "search_placeholder": "Nom, téléphone ou code M-Pesa",
+    "type_more": "Saisissez au moins 3 caractères.",
+    "none_received": "Aucun paiement M-Pesa inutilisé ces dernières heures. Recherchez pour trouver les plus anciens.",
+    "load_failed": "Impossible de charger les paiements M-Pesa.",
+    "just_now": "à l'instant",
+    "minutes_ago": "il y a {{count}} min",
+    "hours_ago": "il y a {{count}} h",
+    "phone_placeholder": "Téléphone du client, ex. 0712 345 678",
+    "send_prompt": "Envoyer la demande M-Pesa",
+    "sending": "Envoi...",
+    "waiting": "En attente du code PIN M-Pesa du client ({{phone}}, {{amount}})...",
+    "checking": "Vérification auprès de M-Pesa...",
+    "no_answer": "Pas encore de réponse de M-Pesa. Si le client a payé, vérifiez à nouveau ; sinon envoyez une nouvelle demande.",
+    "send_failed": "Impossible d'envoyer la demande M-Pesa.",
+    "check_again": "Vérifier à nouveau",
+    "remove": "Retirer"
   }
 }
