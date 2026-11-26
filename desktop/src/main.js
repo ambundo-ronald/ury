@@ -29,8 +29,15 @@ let updateFlashTimer = null;
 let config = null;
 let quitting = false;
 
-/** Prints a ticket the way this PC is set to: as a picture (the default) or as text. */
-const printHtml = (html, printerName) => printer.printHtml(html, printerName, { asPicture: config.get().printAsPicture });
+/**
+ * Prints a ticket the way this PC is set to: ESC/POS straight to a receipt
+ * printer, or through the Windows driver as a picture (the default) or as text.
+ */
+const printHtml = (html, printerName) => {
+  const settings = config.get();
+  if (settings.escposPrinters.includes(printerName)) return printer.printEscpos(html, printerName);
+  return printer.printHtml(html, printerName, { asPicture: settings.printAsPicture });
+};
 
 const icon = () => nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png'));
 
@@ -333,7 +340,7 @@ function sendUpdateStatus() {
 
 function setupIpc() {
   ipcMain.handle('get-state', () => {
-    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize, printAsPicture } = config.get();
+    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize, printAsPicture, escposPrinters } = config.get();
     return {
       siteUrl,
       agentName,
@@ -344,6 +351,7 @@ function setupIpc() {
       updateButton: showUpdateButton,
       textSize,
       printAsPicture,
+      escposPrinters,
       paired: Boolean(token),
       status: agent.status,
       update: { ...updater.status, manual: updater.installWhenReady },
@@ -396,6 +404,11 @@ function setupIpc() {
   });
 
   ipcMain.handle('list-printers', () => printer.listPrinters(setupWindow.webContents));
+
+  ipcMain.handle('set-escpos', (_event, { printerName, on }) => {
+    config.setEscpos(String(printerName || ''), Boolean(on));
+    return config.get().escposPrinters;
+  });
 
   ipcMain.handle('test-print', async (_event, printerName) => {
     const now = new Date().toLocaleString();

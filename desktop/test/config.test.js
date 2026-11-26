@@ -94,3 +94,17 @@ test('tickets print as a picture unless switched off', () => {
   assert.strictEqual(config.get().printAsPicture, false);
   fs.rmSync(dir, { recursive: true });
 });
+
+test('ESC/POS is chosen per printer and off by default', () => {
+  const { config, dir } = tempConfig();
+  assert.deepStrictEqual(config.get().escposPrinters, []);
+  config.setEscpos('Receipt 80', true);
+  config.setEscpos('Receipt 80', true);
+  config.setEscpos('Kitchen', true);
+  assert.deepStrictEqual(config.get().escposPrinters, ['Receipt 80', 'Kitchen']);
+  config.setEscpos('Receipt 80', false);
+  assert.deepStrictEqual(config.get().escposPrinters, ['Kitchen']);
+  config.setScreen({ textSize: 1 });
+  assert.deepStrictEqual(config.get().escposPrinters, ['Kitchen']);
+  fs.rmSync(dir, { recursive: true });
+});

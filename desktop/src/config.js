@@ -61,6 +61,8 @@ function create({ dir, safeStorage }) {
         updateButtonPosition: validPosition(data.updateButtonPosition),
         // Print tickets as a picture, so receipt printer drivers cannot garble the text.
         printAsPicture: data.printAsPicture !== false,
+        // Windows printers that get ESC/POS directly, past their driver.
+        escposPrinters: validNames(data.escposPrinters),
       };
     },
     setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition, updateButton, updateButtonPosition, textSize, printAsPicture }) {
@@ -73,6 +75,14 @@ function create({ dir, safeStorage }) {
       if (updateButton !== undefined) data.updateButton = Boolean(updateButton);
       if (updateButtonPosition !== undefined) data.updateButtonPosition = validPosition(updateButtonPosition);
       if (printAsPicture !== undefined) data.printAsPicture = Boolean(printAsPicture);
+      write(data);
+    },
+    /** Sends this Windows printer ESC/POS directly (on) or prints through its driver (off). */
+    setEscpos(printerName, on) {
+      const data = read();
+      const names = validNames(data.escposPrinters).filter((name) => name !== printerName);
+      if (on && printerName) names.push(String(printerName));
+      data.escposPrinters = names;
       write(data);
     },
     setSite(siteUrl) {
@@ -109,6 +119,10 @@ const DEFAULT_TEXT_SIZE = 0.875;
 function validTextSize(value) {
   const number = Number(value);
   return TEXT_SIZES.includes(number) ? number : DEFAULT_TEXT_SIZE;
+}
+
+function validNames(list) {
+  return Array.isArray(list) ? [...new Set(list.filter((name) => typeof name === 'string' && name))] : [];
 }
 
 function validPosition(position) {

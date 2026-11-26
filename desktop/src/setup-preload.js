@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('ury', {
   checkUpdate: () => ipcRenderer.invoke('check-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   updateNow: () => ipcRenderer.invoke('update-now'),
+  setEscpos: (printerName, on) => ipcRenderer.invoke('set-escpos', { printerName, on }),
   onUpdate: (callback) => ipcRenderer.on('update-status', (_event, status) => callback(status)),
 });
