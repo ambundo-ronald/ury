@@ -6,7 +6,8 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground;
+    /* ERPNext Desk's font everywhere, including dialogs outside the layout. */
+    @apply bg-background text-foreground font-inter;
   }
 }
 

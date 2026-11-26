@@ -24,7 +24,7 @@ const MenuCard: FC<MenuCardProps> = ({
   return (
     <div
       className={cn(
-        "bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-56 flex flex-col",
+        "bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer min-h-56 h-full flex flex-col",
         disabled && "opacity-50 cursor-not-allowed pointer-events-none"
       )}
       onClick={disabled ? undefined : onClick}
@@ -58,9 +58,9 @@ const MenuCard: FC<MenuCardProps> = ({
 
       {/* Content section - flex grow with fixed padding */}
       <div className="flex-1 p-3 flex flex-col">
-        {/* Name section - fixed height for 2 lines */}
+        {/* Name section - the whole name, wrapped (long names make the card taller) */}
         <div className="">
-          <h3 className="font-medium text-gray-900 text-sm leading-5 line-clamp-2" title={name}>
+          <h3 className="font-medium text-gray-900 text-sm leading-5 break-words hyphens-auto" title={name}>
             {name}
           </h3>
         </div>

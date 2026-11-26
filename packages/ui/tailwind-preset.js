@@ -75,7 +75,8 @@ export default {
         black: "hsl(var(--black))",
       },
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        // ERPNext Desk's font stack (frappe/public/scss/espresso/_typography.scss).
+        inter: ['InterVariable', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       borderRadius: {
         xl: "calc(var(--radius) + 4px)",
