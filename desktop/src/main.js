@@ -29,6 +29,9 @@ let updateFlashTimer = null;
 let config = null;
 let quitting = false;
 
+/** Prints a ticket the way this PC is set to: as a picture (the default) or as text. */
+const printHtml = (html, printerName) => printer.printHtml(html, printerName, { asPicture: config.get().printAsPicture });
+
 const icon = () => nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png'));
 
 function stateStore() {
@@ -330,7 +333,7 @@ function sendUpdateStatus() {
 
 function setupIpc() {
   ipcMain.handle('get-state', () => {
-    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize } = config.get();
+    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize, printAsPicture } = config.get();
     return {
       siteUrl,
       agentName,
@@ -340,6 +343,7 @@ function setupIpc() {
       keyboardButton: showKeyboardButton,
       updateButton: showUpdateButton,
       textSize,
+      printAsPicture,
       paired: Boolean(token),
       status: agent.status,
       update: { ...updater.status, manual: updater.installWhenReady },
@@ -347,9 +351,9 @@ function setupIpc() {
     };
   });
 
-  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize }) => {
+  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize, printAsPicture }) => {
     const before = config.get();
-    config.setScreen({ startPage, fullScreen, textSize });
+    config.setScreen({ startPage, fullScreen, textSize, printAsPicture });
     if (textSize !== undefined && posWindow && !posWindow.isDestroyed()) {
       posWindow.webContents.setZoomFactor(config.get().textSize);
     }
@@ -395,7 +399,7 @@ function setupIpc() {
 
   ipcMain.handle('test-print', async (_event, printerName) => {
     const now = new Date().toLocaleString();
-    await printer.printHtml(
+    await printHtml(
       `<!doctype html><html><body style="font-family:sans-serif;width:72mm;margin:0;padding:4mm">
         <h2 style="margin:0 0 2mm">URY test print</h2>
         <div>${printerName.replace(/[<>&]/g, '')}</div><div>${now}</div>
@@ -414,7 +418,7 @@ app.whenReady().then(() => {
 
   agent = new PrintAgent({
     getConfig: () => config.get(),
-    printHtml: printer.printHtml,
+    printHtml,
     listPrinters: async () => {
       const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
       if (win) return printer.listPrinters(win.webContents);
