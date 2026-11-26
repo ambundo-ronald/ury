@@ -32,7 +32,7 @@ const Sidebar = ({ disabled }: SidebarProps) => {
   return (
     <SidebarContainer disabled={disabled}>
       {/* Categories List */}
-      <nav className="flex-1 p-6 overflow-y-auto">
+      <nav className="flex-1 min-h-0 p-3 overflow-y-auto overflow-x-hidden overscroll-contain">
         <SidebarCard>
           {/* Section Title */}
           <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3 px-1">
@@ -72,20 +72,20 @@ const Sidebar = ({ disabled }: SidebarProps) => {
                   key={category.name}
                   onClick={() => setSelectedCategory(category.name)}
                   variant="ghost"
-                  className={sidebarItemVariants({ active: isActive })}
+                  className={sidebarItemVariants({ active: isActive }) + ' h-auto min-h-10 whitespace-normal gap-2'}
                   disabled={disabled}
                 >
                   {/* Active indicator bar */}
                   {isActive && <SidebarActiveIndicator />}
-                  <div className="flex items-center gap-3 ms-1">
+                  <div className="flex items-center gap-3 ms-1 min-w-0">
                     <CategoryIcon
                       name={category.icon}
                       courseName={category.name}
                       className="w-4 h-4 text-gray-500 flex-shrink-0"
                     />
-                    <span className="text-start">{category.label}</span>
+                    <span className="text-start break-words min-w-0">{category.label}</span>
                   </div>
-                  <Badge variant="secondary" size="sm" className="text-xs text-gray-500 bg-gray-100 min-w-[24px] text-center">
+                  <Badge variant="secondary" size="sm" className="text-xs text-gray-500 bg-gray-100 min-w-[24px] text-center shrink-0">
                     {count}
                   </Badge>
                 </Button>
