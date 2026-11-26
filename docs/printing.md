@@ -19,6 +19,17 @@ as before, and their failures now show on the POS too.
 
 ## Setting up
 
+**One printing PC, any number of POS screens.** Pair only the PC the
+printers are connected to (by USB, or on the same network). Waiter and
+cashier screens just run the POS; their tickets print on the printing PC.
+One agent can print to all of the restaurant's printers: each URY printer
+belongs to exactly one agent.
+
+**A POS screen (no printers):** install the app, type the site address at
+the top of the window that opens, and click **Open POS**. Nothing else: no
+agent, no pairing. From then on the app opens straight on the POS, and it
+starts with Windows (tray menu > Start with Windows switches this off).
+
 ### 1. The printers in Windows
 
 On the PC, install each kitchen, bar and bill printer in Windows with its
@@ -51,10 +62,10 @@ Pick these printers as usual:
 
 1. Desk > **URY Print Agent** > New. Name it after the PC (e.g. `POS-PC`)
    and choose the branch.
-2. Install `URY POS Setup.exe` on the PC and open it. The **Printing** window
-   opens.
-3. In the agent form, click **Pair the Windows App**. Type the site address,
-   the agent name and the 6-digit code into the app, then click **Pair**. The
+2. Install `URY POS Setup.exe` on the PC and open it, and type the site
+   address at the top of the window.
+3. In the agent form, click **Pair the Windows App**. Under **Set up
+   printing**, type the agent name and the 6-digit code, then click **Pair**. The
    code works once and expires in 10 minutes.
 4. The app lists **Printers on this PC**, and so does the agent form
    ("Printers Found On This PC"). In the agent's **Printers** table, add a

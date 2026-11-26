@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const STATE_TEXT = {
   online: 'Connected: printing',
   offline: 'No connection: tickets wait on the site and print when it is back',
-  not_paired: 'Not set up',
+  not_paired: 'Not printing here (only the PC with the printers is paired)',
   stopped: 'Stopped',
 };
 
@@ -107,7 +107,7 @@ async function load() {
   $('version').textContent = `URY POS ${state.version}`;
   $('unpair').classList.toggle('hidden', !state.paired);
   $('paired-as').textContent = state.paired ? `Paired as ${state.agentName} (${state.branch}) on ${state.siteUrl}` : '';
-  $('open-pos').disabled = !state.siteUrl;
+  renderOpenPos();
   $('start-page').value = state.startPage || 'station';
   $('full-screen').checked = state.fullScreen !== false;
   $('text-size').value = String(state.textSize || 0.875);
@@ -195,12 +195,21 @@ $('print-as-picture').addEventListener('change', async () => {
 });
 
 $('refresh').addEventListener('click', loadPrinters);
+function renderOpenPos() {
+  $('open-pos').disabled = !$('site').value.trim();
+}
+$('site').addEventListener('input', renderOpenPos);
+$('site').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !$('open-pos').disabled) $('open-pos').click();
+});
+
 $('open-pos').addEventListener('click', async () => {
   try {
-    if ($('site').value) await window.ury.setSite($('site').value);
+    await window.ury.setSite($('site').value);
+    $('site-result').textContent = '';
     await window.ury.openPos();
   } catch (error) {
-    showResult($('pair-result'), false, cleanError(error));
+    showResult($('site-result'), false, cleanError(error));
   }
 });
 
