@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <title>Keyboard</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+    button {
+      /* URY POS primary, as a round floating button. */
+      width: 56px; height: 56px; margin: 4px; padding: 0;
+      border: 0; border-radius: 50%; cursor: pointer;
+      background: #2563eb; color: #f8fafc;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, .25);
+      display: flex; align-items: center; justify-content: center;
+      opacity: .9; touch-action: none;
+    }
+    button:hover { opacity: 1; background: #1d4ed8; }
+    button.pressed { transform: scale(.94); }
+    svg { width: 30px; height: 30px; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <button id="kb" type="button" title="On-screen keyboard (drag to move)" aria-label="Open the on-screen keyboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M8 16h8M10 13h4"/>
+    </svg>
+  </button>
+  <script>
+    const button = document.getElementById('kb');
+    let down = false;
+    button.addEventListener('pointerdown', (event) => {
+      down = true;
+      button.setPointerCapture(event.pointerId);
+      button.classList.add('pressed');
+      window.keyboardButton.pointer('down');
+    });
+    button.addEventListener('pointermove', () => { if (down) window.keyboardButton.pointer('move'); });
+    const finish = (phase) => () => {
+      if (!down) return;
+      down = false;
+      button.classList.remove('pressed');
+      window.keyboardButton.pointer(phase);
+    };
+    button.addEventListener('pointerup', finish('up'));
+    button.addEventListener('pointercancel', finish('cancel'));
+  </script>
+</body>
+</html>
