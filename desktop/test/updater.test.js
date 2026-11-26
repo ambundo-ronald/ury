@@ -102,3 +102,86 @@ test('disabled builds never check', async () => {
   assert.strictEqual(timers.length, 0);
   assert.strictEqual(updater.status.state, 'disabled');
 });
+
+function results(updater) {
+  const seen = [];
+  updater.on('manual-result', (r) => seen.push(r.outcome));
+  return seen;
+}
+
+test('update now: checks, downloads and installs straight away, outside quiet hours', async () => {
+  const { updater, autoUpdater } = makeUpdater();
+  const seen = results(updater);
+  updater.start();
+  await updater.updateNow();
+  assert.strictEqual(autoUpdater.checks, 1);
+  assert.strictEqual(updater.installWhenReady, true);
+  autoUpdater.emit('update-available', { version: '1.3.0' });
+  assert.deepStrictEqual(autoUpdater.installs, []);
+  autoUpdater.emit('update-downloaded', { version: '1.3.0' });
+  assert.deepStrictEqual(autoUpdater.installs, [[true, true]]);
+  assert.strictEqual(updater.status.state, 'installing');
+  assert.deepStrictEqual(seen, ['installing']);
+});
+
+test('update now: an update already downloaded installs at once', async () => {
+  const { updater, autoUpdater } = makeUpdater();
+  updater.start();
+  autoUpdater.emit('update-downloaded', { version: '1.3.0' });
+  assert.deepStrictEqual(autoUpdater.installs, []);
+  await updater.updateNow();
+  assert.strictEqual(autoUpdater.checks, 0);
+  assert.deepStrictEqual(autoUpdater.installs, [[true, true]]);
+});
+
+test('update now: waits for the ticket being printed', async () => {
+  let printing = true;
+  const { updater, autoUpdater, timers } = makeUpdater({ isPrinting: () => printing });
+  updater.start();
+  autoUpdater.emit('update-downloaded', { version: '1.3.0' });
+  timers.length = 0;
+  await updater.updateNow();
+  assert.deepStrictEqual(autoUpdater.installs, []);
+  assert.strictEqual(timers.length, 1);
+  printing = false;
+  timers[0].fn();
+  assert.deepStrictEqual(autoUpdater.installs, [[true, true]]);
+});
+
+test('update now: says when already up to date, or when it fails', async () => {
+  const { updater, autoUpdater } = makeUpdater();
+  const seen = results(updater);
+  updater.start();
+  await updater.updateNow();
+  autoUpdater.emit('update-not-available', {});
+  assert.strictEqual(updater.installWhenReady, false);
+
+  autoUpdater.checkForUpdates = async () => {
+    autoUpdater.emit('error', new Error('net::ERR_INTERNET_DISCONNECTED'));
+    throw new Error('net::ERR_INTERNET_DISCONNECTED');
+  };
+  await updater.updateNow();
+  assert.deepStrictEqual(seen, ['up_to_date', 'error']);
+  assert.strictEqual(updater.installWhenReady, false);
+
+  // A later background download does not install by itself during service.
+  autoUpdater.emit('update-downloaded', { version: '1.3.0' });
+  assert.deepStrictEqual(autoUpdater.installs, []);
+});
+
+test('update now: a background check finding nothing is not reported', async () => {
+  const { updater, autoUpdater } = makeUpdater();
+  const seen = results(updater);
+  updater.start();
+  await updater.check();
+  autoUpdater.emit('update-not-available', {});
+  assert.deepStrictEqual(seen, []);
+});
+
+test('update now in a build without updates says so', async () => {
+  const { updater, autoUpdater } = makeUpdater({ enabled: false });
+  const seen = results(updater);
+  await updater.updateNow();
+  assert.strictEqual(autoUpdater.checks, 0);
+  assert.deepStrictEqual(seen, ['disabled']);
+});

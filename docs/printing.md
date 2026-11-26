@@ -80,6 +80,11 @@ window, section **POS screen**:
   being edited; close the keyboard with its ✕. Drag the button to move it,
   and it stays where it was left. Switch it off in the Printing window or the
   tray menu.
+- **Update button:** a round white button with two arrows, just above the
+  keyboard button. Tap it to update the app now (see [Updates](#updates)).
+  It works on the station sign-in screen and the offline page, so nobody has
+  to sign in. Drag it to move it; switch it off in the Printing window or
+  the tray menu.
 
 On a touch screen, Windows can also pop up its touch keyboard by itself when
 a text box is tapped. If Settings > Time & language > Typing > Touch keyboard
@@ -159,6 +164,21 @@ GitHub release:
   - when someone clicks **Restart to update**, in the tray menu or the
     Printing window.
 - Tickets sent during the restart wait and print right after.
+
+### Update now
+
+To update straight away, for example after a fix is released, tap the
+**update button** floating over the POS, or click **Update now** in the tray
+menu or the Printing window. Nobody needs to be signed in. The app:
+
+1. checks for a new version (the button spins);
+2. downloads it, showing the percentage on the button;
+3. waits for any ticket being printed, then closes, installs and opens again
+   in a few seconds.
+
+If there is nothing new, the button shows a green tick and Windows shows
+"URY POS is up to date". If it cannot update (no internet, for example), the
+button shows a red **!** and Windows says why; tap it again later.
 
 ### Releasing a new version
 

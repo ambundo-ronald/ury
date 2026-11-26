@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld('ury', {
   onStatus: (callback) => ipcRenderer.on('agent-status', (_event, status) => callback(status)),
   checkUpdate: () => ipcRenderer.invoke('check-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
+  updateNow: () => ipcRenderer.invoke('update-now'),
   onUpdate: (callback) => ipcRenderer.on('update-status', (_event, status) => callback(status)),
 });

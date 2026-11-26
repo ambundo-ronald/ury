@@ -4,13 +4,13 @@
 
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, safeStorage, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, safeStorage, nativeImage, dialog, Notification } = require('electron');
 
 const configModule = require('./config');
 const { PrintAgent, pair } = require('./agent');
 const printer = require('./printer');
 const { Updater } = require('./updater');
-const { KeyboardButton } = require('./keyboard');
+const { FloatingButton, openKeyboard } = require('./floating-button');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -23,6 +23,9 @@ let tray = null;
 let agent = null;
 let updater = null;
 let keyboardButton = null;
+let updateButton = null;
+let updateFlash = null;
+let updateFlashTimer = null;
 let config = null;
 let quitting = false;
 
@@ -44,18 +47,85 @@ function stateStore() {
   };
 }
 
-/** The keyboard button shows only over a visible POS window, and only if switched on. */
-function syncKeyboardButton() {
-  if (!keyboardButton) return;
+/** The floating buttons show only over a visible POS window, and only if switched on. */
+function syncFloatingButtons() {
   const visible = posWindow && !posWindow.isDestroyed() && posWindow.isVisible() && !posWindow.isMinimized();
-  if (visible && config.get().keyboardButton) keyboardButton.show(posWindow);
-  else keyboardButton.hide();
+  const settings = config.get();
+  for (const [button, on] of [
+    [keyboardButton, settings.keyboardButton],
+    [updateButton, settings.updateButton],
+  ]) {
+    if (!button) continue;
+    if (visible && on) button.show(posWindow);
+    else button.hide();
+  }
 }
 
 function setKeyboardButton(on) {
   config.setScreen({ keyboardButton: on });
-  syncKeyboardButton();
+  syncFloatingButtons();
   refreshTray();
+}
+
+function setUpdateButton(on) {
+  config.setScreen({ updateButton: on });
+  syncFloatingButtons();
+  refreshTray();
+}
+
+/** What the update button shows: spinning while it works, a dot when an update waits. */
+function renderUpdateButton() {
+  if (!updateButton || !updater) return;
+  const u = updater.status;
+  const busy = ['checking', 'downloading', 'installing'].includes(u.state) || updater.installWhenReady;
+  const title = {
+    checking: 'Checking for an update...',
+    downloading: `Downloading version ${u.version || ''} (${u.progress || 0}%)...`,
+    installing: 'Installing the update...',
+    ready: `Version ${u.version} is ready: tap to install it now`,
+  }[u.state];
+  updateButton.setState({
+    busy,
+    progress: u.state === 'downloading' ? u.progress || 0 : null,
+    ready: u.state === 'ready',
+    flash: busy ? null : updateFlash,
+    title: title || `URY POS ${app.getVersion()}: tap to update now (drag to move)`,
+  });
+}
+
+function flashUpdateButton(kind) {
+  clearTimeout(updateFlashTimer);
+  updateFlash = kind;
+  renderUpdateButton();
+  updateFlashTimer = setTimeout(() => {
+    updateFlash = null;
+    renderUpdateButton();
+  }, kind === 'error' ? 6000 : 3000);
+}
+
+function notify(title, body) {
+  if (Notification.isSupported()) new Notification({ title, body, icon: icon() }).show();
+}
+
+/** "Update now": check, download and install straight away. Needs nobody signed in. */
+function updateNow() {
+  updater.updateNow();
+  renderUpdateButton();
+}
+
+function onManualUpdateResult(result) {
+  if (result.outcome === 'up_to_date') {
+    flashUpdateButton('ok');
+    notify('URY POS is up to date', `This is the latest version (${app.getVersion()}).`);
+  } else if (result.outcome === 'installing') {
+    notify(`Updating URY POS to ${result.version}`, 'The app closes and opens again in a few seconds. Printing carries on after.');
+  } else if (result.outcome === 'disabled') {
+    flashUpdateButton('error');
+    notify('Updates are off', 'This copy of URY POS was not installed from a release, so it cannot update itself.');
+  } else {
+    flashUpdateButton('error');
+    notify('Could not update URY POS', `${result.message || 'No connection'}. Check the internet connection and tap the update button again.`);
+  }
 }
 
 function setFullScreen(on) {
@@ -88,7 +158,7 @@ function openPos() {
   if (!fullScreen) posWindow.maximize();
   posWindow.once('ready-to-show', () => posWindow.show());
   for (const event of ['show', 'hide', 'minimize', 'restore', 'closed', 'enter-full-screen', 'leave-full-screen']) {
-    posWindow.on(event, syncKeyboardButton);
+    posWindow.on(event, syncFloatingButtons);
   }
 
   const contents = posWindow.webContents;
@@ -176,13 +246,15 @@ function trayLabel(status) {
 function updateMenuItems() {
   const u = updater ? updater.status : { state: 'disabled' };
   if (u.state === 'ready') {
-    return [{ label: `Restart to update to ${u.version}`, click: () => updater.installNow() }];
+    return [{ label: `Restart to update to ${u.version}`, click: updateNow }];
   }
   if (u.state === 'downloading') {
-    return [{ label: `Downloading update ${u.version || ''} (${u.progress || 0}%)`, enabled: false }];
+    const then = updater.installWhenReady ? ', installs when done' : '';
+    return [{ label: `Downloading update ${u.version || ''} (${u.progress || 0}%${then})`, enabled: false }];
   }
+  if (u.state === 'checking' || u.state === 'installing') return [{ label: 'Updating...', enabled: false }];
   if (u.state === 'disabled') return [];
-  return [{ label: 'Check for updates', click: () => updater.check() }];
+  return [{ label: 'Update now', click: updateNow }];
 }
 
 function refreshTray() {
@@ -208,6 +280,12 @@ function refreshTray() {
         type: 'checkbox',
         checked: config.get().keyboardButton,
         click: (item) => setKeyboardButton(item.checked),
+      },
+      {
+        label: 'Update button on the POS',
+        type: 'checkbox',
+        checked: config.get().updateButton,
+        click: (item) => setUpdateButton(item.checked),
       },
       {
         label: 'Start with Windows',
@@ -243,13 +321,16 @@ function sendStatus() {
 }
 
 function sendUpdateStatus() {
-  if (setupWindow && !setupWindow.isDestroyed()) setupWindow.webContents.send('update-status', updater.status);
+  if (setupWindow && !setupWindow.isDestroyed()) {
+    setupWindow.webContents.send('update-status', { ...updater.status, manual: updater.installWhenReady });
+  }
+  renderUpdateButton();
   refreshTray();
 }
 
 function setupIpc() {
   ipcMain.handle('get-state', () => {
-    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, textSize } = config.get();
+    const { siteUrl, agentName, branch, token, startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize } = config.get();
     return {
       siteUrl,
       agentName,
@@ -257,21 +338,23 @@ function setupIpc() {
       startPage,
       fullScreen,
       keyboardButton: showKeyboardButton,
+      updateButton: showUpdateButton,
       textSize,
       paired: Boolean(token),
       status: agent.status,
-      update: updater.status,
+      update: { ...updater.status, manual: updater.installWhenReady },
       version: app.getVersion(),
     };
   });
 
-  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton, textSize }) => {
+  ipcMain.handle('set-screen', (_event, { startPage, fullScreen, keyboardButton: showKeyboardButton, updateButton: showUpdateButton, textSize }) => {
     const before = config.get();
     config.setScreen({ startPage, fullScreen, textSize });
     if (textSize !== undefined && posWindow && !posWindow.isDestroyed()) {
       posWindow.webContents.setZoomFactor(config.get().textSize);
     }
     if (showKeyboardButton !== undefined) setKeyboardButton(Boolean(showKeyboardButton));
+    if (showUpdateButton !== undefined) setUpdateButton(Boolean(showUpdateButton));
     if (fullScreen !== undefined && Boolean(fullScreen) !== before.fullScreen) setFullScreen(Boolean(fullScreen));
     // A different start page applies when the POS window opens next; reload it now if open.
     if (startPage !== undefined && startPage !== before.startPage && posWindow && !posWindow.isDestroyed()) {
@@ -282,7 +365,8 @@ function setupIpc() {
   });
 
   ipcMain.handle('check-update', () => updater.check());
-  ipcMain.handle('install-update', () => updater.installNow());
+  ipcMain.handle('install-update', () => updateNow());
+  ipcMain.handle('update-now', () => updateNow());
 
   ipcMain.handle('pair', async (_event, { siteUrl, agentName, code }) => {
     const site = configModule.normaliseSiteUrl(siteUrl);
@@ -354,16 +438,29 @@ app.whenReady().then(() => {
     isPrinting: () => Boolean(agent.busy),
   });
   updater.on('status', sendUpdateStatus);
+  updater.on('manual-result', onManualUpdateResult);
   updater.on('installing', () => {
     quitting = true;
     agent.stop();
   });
   updater.start();
 
-  keyboardButton = new KeyboardButton({
+  keyboardButton = new FloatingButton({
+    page: 'keyboard.html',
+    title: 'Keyboard',
+    onTap: openKeyboard,
     getPosition: () => config.get().keyboardButtonPosition,
     savePosition: (position) => config.setScreen({ keyboardButtonPosition: position }),
   });
+  updateButton = new FloatingButton({
+    page: 'update-button.html',
+    title: 'Update',
+    slot: 1,
+    onTap: updateNow,
+    getPosition: () => config.get().updateButtonPosition,
+    savePosition: (position) => config.setScreen({ updateButtonPosition: position }),
+  });
+  renderUpdateButton();
 
   setupIpc();
   tray = new Tray(icon());

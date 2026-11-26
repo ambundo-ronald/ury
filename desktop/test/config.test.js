@@ -48,6 +48,20 @@ test('the keyboard button is on by default and remembers where it was left', () 
   fs.rmSync(dir, { recursive: true });
 });
 
+test('the update button is on by default, can be switched off and keeps its own place', () => {
+  const { config, dir } = tempConfig();
+  assert.strictEqual(config.get().updateButton, true);
+  assert.strictEqual(config.get().updateButtonPosition, null);
+
+  config.setScreen({ updateButton: false, updateButtonPosition: { x: 12.2, y: 500 } });
+  assert.strictEqual(config.get().updateButton, false);
+  assert.deepStrictEqual(config.get().updateButtonPosition, { x: 12, y: 500 });
+  // Moving one button leaves the other where it was.
+  assert.strictEqual(config.get().keyboardButtonPosition, null);
+  assert.strictEqual(config.get().keyboardButton, true);
+  fs.rmSync(dir, { recursive: true });
+});
+
 test('text size defaults to ERPNext size and only takes the listed sizes', () => {
   const { config, dir } = tempConfig();
   assert.strictEqual(config.get().textSize, 0.875);
