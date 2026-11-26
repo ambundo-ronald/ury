@@ -54,17 +54,22 @@ function create({ dir, safeStorage }) {
         fullScreen: data.fullScreen !== false,
         // Floating button over the POS that opens the on-screen keyboard, and where it was left.
         keyboardButton: data.keyboardButton !== false,
+        // Floating "sync" button that updates the app straight away.
+        updateButton: data.updateButton !== false,
         textSize: validTextSize(data.textSize),
         keyboardButtonPosition: validPosition(data.keyboardButtonPosition),
+        updateButtonPosition: validPosition(data.updateButtonPosition),
       };
     },
-    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition, textSize }) {
+    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition, updateButton, updateButtonPosition, textSize }) {
       const data = read();
       if (startPage !== undefined) data.startPage = startPage === 'login' ? 'login' : 'station';
       if (fullScreen !== undefined) data.fullScreen = Boolean(fullScreen);
       if (keyboardButton !== undefined) data.keyboardButton = Boolean(keyboardButton);
       if (textSize !== undefined) data.textSize = validTextSize(textSize);
       if (keyboardButtonPosition !== undefined) data.keyboardButtonPosition = validPosition(keyboardButtonPosition);
+      if (updateButton !== undefined) data.updateButton = Boolean(updateButton);
+      if (updateButtonPosition !== undefined) data.updateButtonPosition = validPosition(updateButtonPosition);
       write(data);
     },
     setSite(siteUrl) {

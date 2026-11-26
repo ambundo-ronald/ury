@@ -1,15 +1,20 @@
-// A small floating button over the POS window that opens Windows' On-Screen
-// Keyboard, so staff can type in full screen without a physical keyboard.
+// Small round buttons that float over the POS window: one opens Windows'
+// On-Screen Keyboard, so staff can type in full screen without a physical
+// keyboard; one updates the app ("sync"). They belong to the app, not to the
+// site, so they work on the station PIN screen and the offline page too, with
+// nobody signed in.
 //
-// The button never takes focus (focusable: false): the cursor stays in the
-// POS text box, and the keyboard types there. Drag it to move it; a tap
-// (a press that moves less than a few pixels) opens the keyboard.
+// A button never takes focus (focusable: false): the cursor stays in the POS
+// text box, and the keyboard types there. Drag a button to move it; a tap (a
+// press that moves less than a few pixels) runs its action.
 
 const path = require('path');
 const { BrowserWindow, ipcMain, screen, shell } = require('electron');
 
 const SIZE = 64;
 const TAP_PIXELS = 6;
+// The update button's default place: just above the keyboard button.
+const STACK_GAP = 12;
 
 function oskPath() {
   return path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'osk.exe');
@@ -24,16 +29,29 @@ function clampToDisplay(x, y) {
   };
 }
 
-class KeyboardButton {
-  constructor({ getPosition, savePosition, openKeyboard = () => shell.openPath(oskPath()) }) {
+class FloatingButton {
+  /**
+   * @param {object} options
+   * @param {string} options.page HTML file in src/
+   * @param {string} options.title
+   * @param {() => void} options.onTap
+   * @param {() => ({x: number, y: number} | null)} options.getPosition
+   * @param {(position: {x: number, y: number}) => void} options.savePosition
+   * @param {number} [options.slot] 0 = keyboard place, 1 = just above it
+   */
+  constructor({ page, title, onTap, getPosition, savePosition, slot = 0 }) {
+    this.page = page;
+    this.title = title;
+    this.onTap = onTap;
     this.getPosition = getPosition;
     this.savePosition = savePosition;
-    this.openKeyboard = openKeyboard;
+    this.slot = slot;
     this.window = null;
     this.drag = null;
+    this.lastState = null;
 
-    ipcMain.on('keyboard-button', (event, phase) => {
-      if (!this.window || event.sender !== this.window.webContents) return;
+    ipcMain.on('floating-button', (event, phase) => {
+      if (!this.window || this.window.isDestroyed() || event.sender !== this.window.webContents) return;
       this.onPointer(phase);
     });
   }
@@ -42,7 +60,7 @@ class KeyboardButton {
     const bounds = nearWindow ? nearWindow.getBounds() : screen.getPrimaryDisplay().bounds;
     const area = screen.getDisplayMatching(bounds).bounds;
     // Left edge, a little below the middle: clear of the POS header and the order panel.
-    return { x: area.x + 12, y: area.y + Math.round(area.height * 0.55) };
+    return { x: area.x + 12, y: area.y + Math.round(area.height * 0.55) - this.slot * (SIZE + STACK_GAP) };
   }
 
   show(nearWindow) {
@@ -58,6 +76,12 @@ class KeyboardButton {
   destroy() {
     if (this.window && !this.window.isDestroyed()) this.window.destroy();
     this.window = null;
+  }
+
+  /** Sends a state to the button's page (the update button shows progress). */
+  setState(state) {
+    this.lastState = state;
+    if (this.window && !this.window.isDestroyed()) this.window.webContents.send('floating-button-state', state);
   }
 
   create(nearWindow) {
@@ -79,15 +103,18 @@ class KeyboardButton {
       focusable: false,
       show: false,
       alwaysOnTop: true,
-      title: 'Keyboard',
+      title: this.title,
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        preload: path.join(__dirname, 'keyboard-preload.js'),
+        preload: path.join(__dirname, 'floating-button-preload.js'),
       },
     });
-    this.window.loadFile(path.join(__dirname, 'keyboard.html'));
+    this.window.webContents.on('did-finish-load', () => {
+      if (this.lastState) this.setState(this.lastState);
+    });
+    this.window.loadFile(path.join(__dirname, this.page));
   }
 
   onPointer(phase) {
@@ -110,7 +137,7 @@ class KeyboardButton {
         const [x, y] = this.window.getPosition();
         this.savePosition({ x, y });
       } else {
-        this.openKeyboard();
+        this.onTap();
       }
     } else if (phase === 'cancel') {
       this.drag = null;
@@ -118,4 +145,6 @@ class KeyboardButton {
   }
 }
 
-module.exports = { KeyboardButton, clampToDisplay, SIZE };
+const openKeyboard = () => shell.openPath(oskPath());
+
+module.exports = { FloatingButton, openKeyboard, clampToDisplay, SIZE };

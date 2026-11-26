@@ -70,16 +70,22 @@ async function loadPrinters() {
 function renderUpdate(update) {
   const text = {
     disabled: 'Updates are off in this build (development or no update feed).',
-    idle: 'Checks for updates every few hours.',
+    idle: 'Checks for updates every few hours. Update now checks, downloads and installs straight away.',
     checking: 'Checking for updates...',
     up_to_date: 'Up to date.',
-    downloading: `Downloading version ${update.version || ''} (${update.progress || 0}%). Printing carries on.`,
-    ready: `Version ${update.version} is ready. It installs by itself between 3 and 5 a.m., when the app is quit, or now with Restart to update (printing pauses for about 10 seconds).`,
+    downloading: update.manual
+      ? `Downloading version ${update.version || ''} (${update.progress || 0}%). It installs as soon as it is downloaded.`
+      : `Downloading version ${update.version || ''} (${update.progress || 0}%). Printing carries on.`,
+    ready: update.manual
+      ? `Installing version ${update.version}... ${update.message || ''}`
+      : `Version ${update.version} is ready. It installs by itself between 3 and 5 a.m., when the app is quit, or now with Update now (printing pauses for about 10 seconds).`,
+    installing: `Installing version ${update.version}. The app opens again in a few seconds.`,
     error: `Could not check for updates: ${update.message || 'no connection'}. Will try again later.`,
   }[update.state];
   $('update-text').textContent = text || update.state;
-  $('install-update').classList.toggle('hidden', update.state !== 'ready');
-  $('check-update').disabled = ['disabled', 'checking', 'downloading', 'ready'].includes(update.state);
+  const working = update.manual || ['disabled', 'checking', 'downloading', 'installing'].includes(update.state);
+  $('update-now').disabled = working;
+  $('update-now').textContent = update.state === 'ready' ? `Restart to update to ${update.version}` : 'Update now';
 }
 
 async function load() {
@@ -94,12 +100,12 @@ async function load() {
   $('full-screen').checked = state.fullScreen !== false;
   $('text-size').value = String(state.textSize || 0.875);
   $('keyboard-button').checked = state.keyboardButton !== false;
+  $('update-button').checked = state.updateButton !== false;
   renderStatus(state.status);
   renderUpdate(state.update);
 }
 
-$('check-update').addEventListener('click', () => window.ury.checkUpdate());
-$('install-update').addEventListener('click', () => window.ury.installUpdate());
+$('update-now').addEventListener('click', () => window.ury.updateNow());
 window.ury.onUpdate(renderUpdate);
 
 $('pair').addEventListener('click', async () => {
@@ -149,6 +155,7 @@ $('start-page').addEventListener('change', () => saveScreen({ startPage: $('star
 $('text-size').addEventListener('change', () => saveScreen({ textSize: Number($('text-size').value) }));
 $('full-screen').addEventListener('change', () => saveScreen({ fullScreen: $('full-screen').checked }));
 $('keyboard-button').addEventListener('change', () => saveScreen({ keyboardButton: $('keyboard-button').checked }));
+$('update-button').addEventListener('change', () => saveScreen({ updateButton: $('update-button').checked }));
 
 $('refresh').addEventListener('click', loadPrinters);
 $('open-pos').addEventListener('click', async () => {

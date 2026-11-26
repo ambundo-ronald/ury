@@ -34,14 +34,14 @@
       down = true;
       button.setPointerCapture(event.pointerId);
       button.classList.add('pressed');
-      window.keyboardButton.pointer('down');
+      window.floatingButton.pointer('down');
     });
-    button.addEventListener('pointermove', () => { if (down) window.keyboardButton.pointer('move'); });
+    button.addEventListener('pointermove', () => { if (down) window.floatingButton.pointer('move'); });
     const finish = (phase) => () => {
       if (!down) return;
       down = false;
       button.classList.remove('pressed');
-      window.keyboardButton.pointer(phase);
+      window.floatingButton.pointer(phase);
     };
     button.addEventListener('pointerup', finish('up'));
     button.addEventListener('pointercancel', finish('cancel'));
