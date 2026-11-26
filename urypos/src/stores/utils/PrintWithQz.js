@@ -68,11 +68,16 @@ export function printWithQz(host,htmlToPrint){
             qz.printers.getDefault()
                 .then(async (printer)=>{
                     const data=[{
-                        type:"html",
-                        format:"plain",
-                        data:htmlToPrint
+                        type:"pixel",
+                        format:"html",
+                        flavor:"plain",
+                        data:htmlToPrint,
+                        options:{ pageWidth: 72 } // config units (mm)
                     }];
-                    const config=qz.configs.create(printer)
+                    const config=qz.configs.create(printer,{
+                        units:"mm", margins:0, size:{ width:80, height:null },
+                        scaleContent:true, rasterize:true
+                    })
                     try {
                         await qz.print(config, data);
                         return resolve("printed");
@@ -105,4 +110,4 @@ export function printWithQz(host,htmlToPrint){
             .catch((err)=>reject(err))
         }
     })
-}
+}

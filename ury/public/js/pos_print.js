@@ -108,12 +108,17 @@ frappe.ui.form.on('POS Invoice', {
                                     .then((printer) => {
                                         var htmlcontent = r.message.html;
                                         var data = [{
-                                            type: 'html',
-                                            format: 'plain',
-                                            data: htmlcontent
+                                            type: 'pixel',
+                                            format: 'html',
+                                            flavor: 'plain',
+                                            data: htmlcontent,
+                                            options: { pageWidth: 72 } // config units (mm)
                                         }];
 
-                                        var config = qz.configs.create(printer);
+                                        var config = qz.configs.create(printer, {
+                                            units: 'mm', margins: 0, size: { width: 80, height: null },
+                                            scaleContent: true, rasterize: true
+                                        });
                                         qz.print(config, data)
                                             .then(function () {
                                                 frappe.call({
