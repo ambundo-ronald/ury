@@ -51,8 +51,23 @@ export async function printWithQz(host: string, htmlToPrint: string): Promise<vo
 
   const printing = async () => {
     const printer = await qz.printers.getDefault();
-    const data = [{ type: 'html', format: 'plain', data: htmlToPrint }];
-    const config = qz.configs.create(printer);
+    // QZ Tray 2.1+ format: render the HTML as an image ("pixel") and send it
+    // through the Windows driver. The old 2.0 style {type:'html', format:'plain'}
+    // is not a valid 2.1+ print type and can reach the printer as raw bytes.
+    const data = [{
+      type: 'pixel',
+      format: 'html',
+      flavor: 'plain',
+      data: htmlToPrint,
+      options: { pageWidth: 72 } as any, // in config units (mm)
+    }];
+    const config = qz.configs.create(printer, {
+      units: 'mm',
+      margins: 0,
+      size: { width: 80, height: null } as any,
+      scaleContent: true,
+      rasterize: true,
+    } as any);
     await qz.print(config, data as any);
   };
 
