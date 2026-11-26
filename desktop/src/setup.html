@@ -45,15 +45,24 @@
 </head>
 <body>
 <main>
-  <h1>Printing on this PC</h1>
-  <p class="lead">This PC prints kitchen tickets and bills for URY. It keeps printing from the tray icon while the POS window is closed.</p>
+  <h1>URY POS on this PC</h1>
+  <p class="lead">Type your URY site address and click Open POS. That is all a waiter or cashier screen needs.</p>
 
   <section>
+    <label for="site">Site address</label>
+    <input id="site" placeholder="https://your-restaurant.example.com" autocomplete="off">
+    <div class="row">
+      <button id="open-pos" class="primary">Open POS</button>
+    </div>
+    <div id="site-result"></div>
+  </section>
+
+  <section>
+    <h2>Printing</h2>
     <div id="status" class="status stopped"><span class="dot"></span><span id="status-text">Starting</span></div>
     <div id="status-msg" class="msg"></div>
     <div id="paired-as" class="msg"></div>
     <div class="row">
-      <button id="open-pos" class="primary">Open POS</button>
       <button id="unpair" class="hidden">Unpair this PC</button>
     </div>
   </section>
@@ -81,9 +90,8 @@
 
   <section id="pair-section">
     <h2>Set up printing</h2>
-    <p class="msg">A manager creates a <b>URY Print Agent</b> in the URY Desk, clicks <b>Pair the Windows App</b> and reads you the code.</p>
-    <label for="site">Site address</label>
-    <input id="site" placeholder="https://your-restaurant.example.com" autocomplete="off">
+    <p class="msg"><b>Only on the PC the printers are connected to.</b> Waiter and cashier screens skip this: their tickets print on that PC.</p>
+    <p class="msg">A manager opens the <b>URY Print Agent</b> in the URY Desk, clicks <b>Pair the Windows App</b> and reads you the code. Pairing uses the site address above.</p>
     <label for="agent">Agent name</label>
     <input id="agent" placeholder="POS-PC" autocomplete="off">
     <label for="code">Pairing code</label>

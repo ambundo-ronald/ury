@@ -392,7 +392,13 @@ function setupIpc() {
   });
 
   ipcMain.handle('set-site', (_event, siteUrl) => {
+    const first = !config.get().siteUrl;
     config.setSite(configModule.normaliseSiteUrl(siteUrl));
+    // A POS screen should be back on the POS after a restart or power cut.
+    // (Pairing a printing PC changes this to start hidden in the tray.)
+    if (first && app.isPackaged && !app.getLoginItemSettings().openAtLogin) {
+      app.setLoginItemSettings({ openAtLogin: true, args: [] });
+    }
     return true;
   });
 
@@ -486,7 +492,8 @@ app.whenReady().then(() => {
 
   agent.start();
   const hidden = process.argv.includes('--hidden');
-  if (!config.get().siteUrl || !config.get().token) openSetup();
+  // Only the PC with the printers is paired; every other PC is just a POS screen.
+  if (!config.get().siteUrl) openSetup();
   else if (!hidden) openPos();
 });
 
