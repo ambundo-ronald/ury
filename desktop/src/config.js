@@ -54,14 +54,16 @@ function create({ dir, safeStorage }) {
         fullScreen: data.fullScreen !== false,
         // Floating button over the POS that opens the on-screen keyboard, and where it was left.
         keyboardButton: data.keyboardButton !== false,
+        textSize: validTextSize(data.textSize),
         keyboardButtonPosition: validPosition(data.keyboardButtonPosition),
       };
     },
-    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition }) {
+    setScreen({ startPage, fullScreen, keyboardButton, keyboardButtonPosition, textSize }) {
       const data = read();
       if (startPage !== undefined) data.startPage = startPage === 'login' ? 'login' : 'station';
       if (fullScreen !== undefined) data.fullScreen = Boolean(fullScreen);
       if (keyboardButton !== undefined) data.keyboardButton = Boolean(keyboardButton);
+      if (textSize !== undefined) data.textSize = validTextSize(textSize);
       if (keyboardButtonPosition !== undefined) data.keyboardButtonPosition = validPosition(keyboardButtonPosition);
       write(data);
     },
@@ -91,6 +93,16 @@ function normaliseSiteUrl(input) {
   return url.origin;
 }
 
+// Text size of the POS window, as a zoom factor. ERPNext Desk's text is 14px
+// and the URY POS's 16px, so 0.875 makes the POS read like ERPNext.
+const TEXT_SIZES = [0.75, 0.8, 0.875, 0.9, 1];
+const DEFAULT_TEXT_SIZE = 0.875;
+
+function validTextSize(value) {
+  const number = Number(value);
+  return TEXT_SIZES.includes(number) ? number : DEFAULT_TEXT_SIZE;
+}
+
 function validPosition(position) {
   if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return null;
   return { x: Math.round(position.x), y: Math.round(position.y) };
@@ -101,4 +113,4 @@ function posStartUrl(siteUrl, startPage) {
   return `${new URL(siteUrl).origin}${startPage === 'login' ? '/pos' : '/station'}`;
 }
 
-module.exports = { create, normaliseSiteUrl, posStartUrl };
+module.exports = { create, normaliseSiteUrl, posStartUrl, TEXT_SIZES, DEFAULT_TEXT_SIZE };

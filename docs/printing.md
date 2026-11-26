@@ -70,6 +70,8 @@ window, section **POS screen**:
 
 - **Opens on:** Station sign-in (PIN) or Normal login (email and password).
   On the station page, **Staff login** also leads to the normal login.
+- **Text size:** the POS starts at "Like ERPNext" (87.5%), the same text
+  size as the ERPNext Desk. Choose 75% to 100%.
 - **Full screen:** on or off. **F11** switches it while the POS is open, and so
   does tray menu > POS full screen.
 

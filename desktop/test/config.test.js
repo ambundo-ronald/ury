@@ -48,6 +48,18 @@ test('the keyboard button is on by default and remembers where it was left', () 
   fs.rmSync(dir, { recursive: true });
 });
 
+test('text size defaults to ERPNext size and only takes the listed sizes', () => {
+  const { config, dir } = tempConfig();
+  assert.strictEqual(config.get().textSize, 0.875);
+  config.setScreen({ textSize: 0.8 });
+  assert.strictEqual(config.get().textSize, 0.8);
+  config.setScreen({ textSize: '1' });
+  assert.strictEqual(config.get().textSize, 1);
+  config.setScreen({ textSize: 3 });
+  assert.strictEqual(config.get().textSize, 0.875);
+  fs.rmSync(dir, { recursive: true });
+});
+
 test('start URL is the station page or the POS on the site', () => {
   assert.strictEqual(posStartUrl('https://pos.example.com', 'station'), 'https://pos.example.com/station');
   assert.strictEqual(posStartUrl('https://pos.example.com/', 'login'), 'https://pos.example.com/pos');

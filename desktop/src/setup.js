@@ -92,6 +92,7 @@ async function load() {
   $('open-pos').disabled = !state.siteUrl;
   $('start-page').value = state.startPage || 'station';
   $('full-screen').checked = state.fullScreen !== false;
+  $('text-size').value = String(state.textSize || 0.875);
   $('keyboard-button').checked = state.keyboardButton !== false;
   renderStatus(state.status);
   renderUpdate(state.update);
@@ -145,6 +146,7 @@ async function saveScreen(settings) {
   }
 }
 $('start-page').addEventListener('change', () => saveScreen({ startPage: $('start-page').value }));
+$('text-size').addEventListener('change', () => saveScreen({ textSize: Number($('text-size').value) }));
 $('full-screen').addEventListener('change', () => saveScreen({ fullScreen: $('full-screen').checked }));
 $('keyboard-button').addEventListener('change', () => saveScreen({ keyboardButton: $('keyboard-button').checked }));
 
