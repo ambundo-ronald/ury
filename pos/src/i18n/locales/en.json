@@ -460,5 +460,26 @@
     "action_failed": "Could not do that. Try again.",
     "agent_offline": "The print PC \"{{agent}}\" is not connected. Tickets will wait until it is back. Check it is switched on and online.",
     "waiting": "{{count}} waiting to print"
+  },
+  "mpesa": {
+    "button": "M-Pesa",
+    "received_tab": "Received payments",
+    "prompt_tab": "Send prompt",
+    "search_placeholder": "Name, phone or M-Pesa code",
+    "type_more": "Type at least 3 characters.",
+    "none_received": "No unused M-Pesa payments in the last few hours. Search to find older ones.",
+    "load_failed": "Could not load M-Pesa payments.",
+    "just_now": "just now",
+    "minutes_ago": "{{count}} min ago",
+    "hours_ago": "{{count}} h ago",
+    "phone_placeholder": "Customer phone, e.g. 0712 345 678",
+    "send_prompt": "Send M-Pesa prompt",
+    "sending": "Sending...",
+    "waiting": "Waiting for the customer to enter their M-Pesa PIN ({{phone}}, {{amount}})...",
+    "checking": "Checking with M-Pesa...",
+    "no_answer": "No answer from M-Pesa yet. If the customer paid, check again; otherwise send a new prompt.",
+    "send_failed": "Could not send the M-Pesa prompt.",
+    "check_again": "Check again",
+    "remove": "Remove"
   }
 }

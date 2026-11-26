@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, Coins } from 'lucide-react';
+import { X, Percent, Coins, Smartphone } from 'lucide-react';
 import { usePOSStore } from '../store/pos-store';
 import { formatCurrency, call, parseFrappeError } from '@ury/core';
 import { Button, Input, Dialog, DialogContent, showToast } from '@ury/ui';
 import { DEFAULT_PAYMENT_MODE } from '../data/order-types';
 import { t } from '../i18n';
+import { getMpesaConfig, type MpesaConfig } from '../lib/mpesa-api';
+import MpesaPanel, { EMPTY_SELECTION, selectionTotal, type MpesaSelection } from './MpesaPanel';
 
 
 interface PaymentDialogProps {
@@ -22,6 +24,8 @@ interface PaymentDialogProps {
   clearSelectedOrder: () => void;
   discountPercentage?: number;
   discountAmount?: number;
+  /** The customer's mobile number, to suggest for an M-Pesa prompt. */
+  customerPhone?: string;
 }
 
 const PaymentDialog: React.FC<PaymentDialogProps> = ({
@@ -38,7 +42,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   fetchOrders,
   clearSelectedOrder,
   discountPercentage,
-  discountAmount
+  discountAmount,
+  customerPhone
 }) => {
   const { paymentModes, fetchPaymentModes, posProfile: storePosProfile } = usePOSStore();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -55,10 +60,21 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   const [discountValue, setDiscountValue] = useState<string>(effectivePercentage > 0 ? String(effectivePercentage) : '');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(discountAmount || 0); // Only tracking transaction discount!
   const [paymentInputs, setPaymentInputs] = useState<{ [mode: string]: string }>({});
+  // M-Pesa (modes of payment of type Phone, through the frappe_mpsa_payments app).
+  const [mpesa, setMpesa] = useState<MpesaConfig | null>(null);
+  const [mpesaOpen, setMpesaOpen] = useState<string | null>(null);
+  const [mpesaSelections, setMpesaSelections] = useState<{ [mode: string]: MpesaSelection }>({});
 
   useEffect(() => {
     fetchPaymentModes();
   }, [fetchPaymentModes]);
+
+  useEffect(() => {
+    if (posProfile) getMpesaConfig(posProfile).then(setMpesa);
+  }, [posProfile]);
+
+  const isMpesaMode = (id: string) => Boolean(mpesa?.enabled && mpesa.modes.includes(id));
+  const mpesaChosen = (id: string) => selectionTotal(mpesaSelections[id] || EMPTY_SELECTION) > 0;
 
   // baseTotal represents the amount before any invoice-level discount (like pricing rule or manual discount)
   const baseTotal = grandTotal + (discountAmount || 0);
@@ -93,7 +109,18 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     .map((mode: any) => {
       const id = typeof mode === 'string' ? mode : mode.id;
       const amount = parseFloat(paymentInputs[id] || '');
-      return amount > 0 ? { mode_of_payment: id, amount } : null;
+      if (!(amount > 0)) return null;
+      const chosen = mpesaSelections[id];
+      if (chosen && selectionTotal(chosen) > 0) {
+        // The server checks and claims these M-Pesa payments when the bill is settled.
+        return {
+          mode_of_payment: id,
+          amount,
+          mpesa_c2b: chosen.received.map((p) => p.name),
+          mpesa_requests: chosen.prompts.map((p) => p.name),
+        };
+      }
+      return { mode_of_payment: id, amount };
     })
     .filter(Boolean);
   const paymentsTotal = payments.reduce((sum, p: any) => sum + p.amount, 0);
@@ -123,6 +150,32 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       .filter(([id]) => id !== currentId)
       .reduce((sum, [_, val]) => sum + (parseFloat(val) || 0), 0);
     return Math.max(0, finalTotal - totalEntered);
+  };
+
+  // Still to pay by M-Pesa on this mode: the total less every other method except
+  // the auto-filled cash (which gives way to M-Pesa).
+  const mpesaRemaining = (id: string) => {
+    const others = Object.entries(paymentInputs)
+      .filter(([mode]) => mode !== id && mode !== DEFAULT_PAYMENT_MODE)
+      .reduce((sum, [, val]) => sum + (parseFloat(val) || 0), 0);
+    return Math.max(0, finalTotal - others - selectionTotal(mpesaSelections[id] || EMPTY_SELECTION));
+  };
+
+  const handleMpesaChange = (id: string, selection: MpesaSelection) => {
+    setMpesaSelections((prev) => ({ ...prev, [id]: selection }));
+    const total = selectionTotal(selection);
+    setPaymentInputs((prev) => {
+      const next: { [mode: string]: string } = { ...prev, [id]: total > 0 ? String(total) : '' };
+      // Cash covers whatever M-Pesa does not.
+      if (DEFAULT_PAYMENT_MODE && DEFAULT_PAYMENT_MODE !== id && paymentModes.includes(DEFAULT_PAYMENT_MODE)) {
+        const nonCash = Object.entries(next)
+          .filter(([mode]) => mode !== DEFAULT_PAYMENT_MODE)
+          .reduce((sum, [, val]) => sum + (parseFloat(val) || 0), 0);
+        const rest = Math.max(0, finalTotal - nonCash);
+        next[DEFAULT_PAYMENT_MODE] = rest > 0 ? String(rest) : '';
+      }
+      return next;
+    });
   };
 
   // Handler for input focus to auto-fill remaining balance
@@ -214,21 +267,49 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             <div className="grid grid-cols-1 gap-3">
               {paymentModes.map((mode: any) => {
                 const id = typeof mode === 'string' ? mode : mode.id;
+                const mpesaMode = isMpesaMode(id);
                 return (
-                  <div key={id} className="flex items-center gap-3">
-                    <span className="w-24 font-medium">{typeof mode === 'string' ? mode : mode.name}</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={paymentInputs[id] || ''}
-                      onChange={e => setPaymentInputs(inputs => ({ ...inputs, [id]: e.target.value }))}
-                      onFocus={() => handlePaymentInputFocus(id)}
-                      placeholder={t('payment.amount_placeholder')}
-                      className="flex-1"
-                      size="sm"
-                      disabled={isProcessing}
-                    />
+                  <div key={id} className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="w-24 font-medium">{typeof mode === 'string' ? mode : mode.name}</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={paymentInputs[id] || ''}
+                        onChange={e => setPaymentInputs(inputs => ({ ...inputs, [id]: e.target.value }))}
+                        onFocus={() => handlePaymentInputFocus(id)}
+                        placeholder={t('payment.amount_placeholder')}
+                        className="flex-1"
+                        size="sm"
+                        // Picked M-Pesa payments set this amount.
+                        disabled={isProcessing || mpesaChosen(id)}
+                      />
+                      {mpesaMode && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={mpesaOpen === id ? 'default' : 'outline'}
+                          onClick={() => setMpesaOpen(mpesaOpen === id ? null : id)}
+                          disabled={isProcessing}
+                        >
+                          <Smartphone className="w-4 h-4 me-1" />
+                          {t('mpesa.button')}
+                        </Button>
+                      )}
+                    </div>
+                    {mpesaMode && mpesaOpen === id && (
+                      <MpesaPanel
+                        posProfile={posProfile}
+                        invoice={invoice}
+                        remaining={mpesaRemaining(id)}
+                        defaultPhone={customerPhone}
+                        canPrompt={Boolean(mpesa?.stk)}
+                        selection={mpesaSelections[id] || EMPTY_SELECTION}
+                        onChange={(selection) => handleMpesaChange(id, selection)}
+                        disabled={isProcessing}
+                      />
+                    )}
                   </div>
                 );
               })}
