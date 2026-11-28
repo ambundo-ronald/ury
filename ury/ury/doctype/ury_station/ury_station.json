@@ -8,6 +8,7 @@
   "code",
   "description",
   "enabled",
+  "bill_printer",
   "column_break_1",
   "device_activated_on",
   "locked_until",
@@ -37,6 +38,13 @@
    "label": "Enabled",
    "default": "1",
    "in_list_view": 1
+  },
+  {
+   "fieldname": "bill_printer",
+   "fieldtype": "Link",
+   "label": "Bill Printer",
+   "options": "Network Printer Settings",
+   "description": "Bills printed by a waiter signed in at this station print here. Empty: the POS Profile (or room) bill printer. For a printer at the station, pair the station PC as its own URY Print Agent and add this printer to it."
   },
   {
    "fieldname": "column_break_1",
@@ -83,7 +91,7 @@
   }
  ],
  "links": [],
- "modified": "2026-11-14 12:00:00.000000",
+ "modified": "2026-11-28 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "URY",
  "name": "URY Station",

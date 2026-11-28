@@ -21,6 +21,15 @@ def current_station() -> str | None:
 		return None
 
 
+def station_bill_printer() -> str | None:
+	"""Bill printer of the station this session was started at, if it has one."""
+	station = current_station()
+	if not station:
+		return None
+	printer, enabled = frappe.db.get_value("URY Station", station, ["bill_printer", "enabled"]) or (None, 0)
+	return printer if printer and cint(enabled) else None
+
+
 def landing_page() -> str:
 	"""Where a waiter goes after signing in. Only ever a path on this site."""
 	path = get_settings().landing_page or ""

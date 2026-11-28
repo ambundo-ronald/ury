@@ -119,6 +119,13 @@ def select_network_printer(pos_profile, invoice_id):
     table = frappe.db.get_value("POS Invoice", invoice_id, "restaurant_table")
     print_format = frappe.db.get_value("POS Profile", pos_profile, "print_format")
 
+    # A waiter signed in at a station with its own bill printer prints there.
+    from ury.ury.station.session import station_bill_printer
+
+    station_printer = station_bill_printer()
+    if station_printer:
+        return network_printing("POS Invoice", invoice_id, station_printer, print_format)
+
     if table:
         room = frappe.db.get_value("URY Table", table, "restaurant_room")
         room_bill_printers = frappe.get_all(

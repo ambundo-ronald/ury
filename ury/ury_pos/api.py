@@ -814,6 +814,14 @@ def getPosProfile():
         else:
             print_type = "socket"
 
+        # A waiter signed in at a station with its own bill printer prints there.
+        from ury.ury.station.session import station_bill_printer
+
+        station_printer = station_bill_printer()
+        if station_printer and print_type != "qz":
+            printer = station_printer
+            print_type = "network"
+
     invoice_details = {
         "pos_profile": pos_profile_name,
         "branch": branch,
