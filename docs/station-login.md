@@ -30,6 +30,23 @@ affected.
 To change a waiter's PIN or switch them off, open their *URY Waiter PIN*
 record. Every sign-in attempt is recorded in *URY Station Sign-in Log*.
 
+### A bill printer at each station (optional)
+
+When each screen has its own printer, bills printed by a waiter signed in at
+that screen can come out there, while the cashier's prints (signed in with
+Staff login) keep using the POS Profile's **Bill** printer.
+
+1. Connect the printer to the screen's PC and install it in Windows.
+2. Create a *Network Printer Settings* record for it, for example
+   `Station 1 Printer` (see [printing.md](printing.md), "The printers in URY").
+3. Pair that PC as its own *URY Print Agent* (for example `STATION-1`) and
+   add the printer to the agent's Printers table with its Windows name.
+4. On the *URY Station*, set **Bill Printer** to `Station 1 Printer`.
+
+Kitchen and bar tickets are unaffected: they still go to the production
+units' printers. With the POS Profile set to print through QZ Tray, the
+station printer is not used.
+
 ## Daily use
 
 - The cashier opens the POS as usual. Waiters cannot sign in until today's POS
