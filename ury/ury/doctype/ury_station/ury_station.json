@@ -9,6 +9,7 @@
   "description",
   "enabled",
   "bill_printer",
+  "print_agent",
   "column_break_1",
   "device_activated_on",
   "locked_until",
@@ -45,6 +46,13 @@
    "label": "Bill Printer",
    "options": "Network Printer Settings",
    "description": "Bills printed by a waiter signed in at this station print here. Empty: the POS Profile (or room) bill printer. For a printer at the station, pair the station PC as its own URY Print Agent and add this printer to it."
+  },
+  {
+   "fieldname": "print_agent",
+   "fieldtype": "Link",
+   "label": "Print Agent",
+   "options": "URY Print Agent",
+   "description": "The URY POS app on this station's PC. With Ticket Printing set to \"Each station prints its own orders\" (URY Station Settings), kitchen and bar tickets for orders taken here print through it."
   },
   {
    "fieldname": "column_break_1",
@@ -91,7 +99,7 @@
   }
  ],
  "links": [],
- "modified": "2026-11-28 11:00:00.000000",
+ "modified": "2026-11-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "URY",
  "name": "URY Station",

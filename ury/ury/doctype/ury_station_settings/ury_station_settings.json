@@ -20,7 +20,11 @@
   "require_device_activation",
   "allowed_roles",
   "waiter_section",
-  "waiter_email_domain"
+  "waiter_email_domain",
+  "printing_section",
+  "ticket_printing",
+  "column_break_3",
+  "fallback_agent"
  ],
  "fields": [
   {
@@ -127,11 +131,36 @@
    "default": "waiters.invalid",
    "reqd": 1,
    "description": "Waiter users need an email address as their ID. No mail is ever sent to it."
+  },
+  {
+   "fieldname": "printing_section",
+   "fieldtype": "Section Break",
+   "label": "Kitchen and Bar Tickets"
+  },
+  {
+   "fieldname": "ticket_printing",
+   "fieldtype": "Select",
+   "label": "Ticket Printing",
+   "options": "One PC prints all tickets\nEach station prints its own orders",
+   "default": "One PC prints all tickets",
+   "description": "One PC: each printer is on one URY Print Agent, which prints every ticket for it. Each station: the station PCs also have the kitchen and bar printers, and each prints the tickets for orders taken on it, so no single PC has to stay on. Set each URY Station's Print Agent."
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fallback_agent",
+   "fieldtype": "Link",
+   "label": "Fallback PC",
+   "options": "URY Print Agent",
+   "depends_on": "eval:doc.ticket_printing=='Each station prints its own orders'",
+   "description": "Prints the tickets of orders not taken at a station (cashier, online orders), reprints, and orders from a station whose PC is off. It needs the kitchen and bar printers too. Empty: the first agent that has the printer."
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-11-14 12:00:00.000000",
+ "modified": "2026-11-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "URY",
  "name": "URY Station Settings",

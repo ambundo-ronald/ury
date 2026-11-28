@@ -19,6 +19,28 @@ class URYStationSettings(Document):
 		if not (self.landing_page or "").startswith("/"):
 			frappe.throw(_("Page After Sign-in must start with /."))
 
+		self.validate_ticket_printing()
+
 		refused = sorted({row.role for row in self.allowed_roles} & FORBIDDEN_ROLES)
 		if refused:
 			frappe.throw(_("These roles can never sign in with a PIN: {0}").format(", ".join(refused)))
+
+	def validate_ticket_printing(self):
+		from ury.ury.printing import queue
+
+		if self.ticket_printing == queue.EACH_STATION:
+			return
+		self.fallback_agent = None
+		shared = frappe.db.sql(
+			"""SELECT row.printer, GROUP_CONCAT(row.parent ORDER BY row.parent SEPARATOR ', ')
+			FROM `tabURY Print Agent Printer` row
+			WHERE row.parenttype = 'URY Print Agent'
+			GROUP BY row.printer HAVING COUNT(DISTINCT row.parent) > 1"""
+		)
+		if shared:
+			printer, agents = shared[0]
+			frappe.throw(
+				_("Printer {0} is on several print agents ({1}). With one PC printing all tickets, keep it on one of them.").format(
+					printer, agents
+				)
+			)

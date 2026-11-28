@@ -12,19 +12,33 @@ the cashier and print it again instead of losing the ticket.
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import add_to_date, get_datetime, now_datetime
 
 ALERT_EVENT = "ury_print_alert_{branch}"
 
 
-def agent_for_printer(printer_setting):
-	"""The enabled print agent that prints to this printer, or None."""
+# URY Station Settings > Ticket Printing
+ONE_PC = "One PC prints all tickets"
+EACH_STATION = "Each station prints its own orders"
+# A station PC not heard from for this long is treated as off (it asks every 3 s).
+STATION_AGENT_OFFLINE_SECONDS = 30
+
+
+def per_station_printing():
+	"""True when each station prints the tickets of its own orders."""
+	from ury.ury.station.pin import get_settings
+
+	return get_settings().ticket_printing == EACH_STATION
+
+
+def agents_with_printer(printer_setting):
+	"""Enabled print agents that have this printer, oldest first."""
 	if not printer_setting or not isinstance(printer_setting, str):
-		return None
+		return []
 	# One query, so callers' tests that mock frappe.get_all are unaffected.
 	agent = frappe.qb.DocType("URY Print Agent")
 	row = frappe.qb.DocType("URY Print Agent Printer")
-	found = (
+	return (
 		frappe.qb.from_(row)
 		.join(agent)
 		.on(agent.name == row.parent)
@@ -32,10 +46,46 @@ def agent_for_printer(printer_setting):
 		.where(row.parenttype == "URY Print Agent")
 		.where(row.printer == printer_setting)
 		.where(agent.enabled == 1)
-		.limit(1)
+		.orderby(agent.creation)
 		.run(pluck=True)
 	)
-	return found[0] if found else None
+
+
+def _station_agent():
+	"""The print agent of the station this request comes from, if any."""
+	from ury.ury.station.session import current_station
+
+	station = current_station()
+	return frappe.db.get_value("URY Station", station, "print_agent") if station else None
+
+
+def _recently_seen(agent):
+	last_seen = frappe.db.get_value("URY Print Agent", agent, "last_seen")
+	return bool(last_seen) and get_datetime(last_seen) >= add_to_date(
+		now_datetime(), seconds=-STATION_AGENT_OFFLINE_SECONDS
+	)
+
+
+def agent_for_printer(printer_setting):
+	"""The enabled print agent that should print this ticket, or None.
+
+	Usually one agent has the printer. With "Each station prints its own
+	orders", several do: the station that took the order prints it if its PC
+	is on; anything else goes to the fallback PC.
+	"""
+	agents = agents_with_printer(printer_setting)
+	if len(agents) <= 1:
+		return agents[0] if agents else None
+	if per_station_printing():
+		station_agent = _station_agent()
+		if station_agent in agents and _recently_seen(station_agent):
+			return station_agent
+		from ury.ury.station.pin import get_settings
+
+		fallback = get_settings().fallback_agent
+		if fallback in agents:
+			return fallback
+	return agents[0]
 
 
 def _new_job(doctype, name, printer_setting, print_format, branch, label, agent):
