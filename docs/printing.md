@@ -30,6 +30,26 @@ the top of the window that opens, and click **Open POS**. Nothing else: no
 agent, no pairing. From then on the app opens straight on the POS, and it
 starts with Windows (tray menu > Start with Windows switches this off).
 
+**Kitchen and bar tickets: one PC, or each station.** Choose in Desk >
+*URY Station Settings* > Kitchen and Bar Tickets > **Ticket Printing**:
+
+- **One PC prints all tickets** (default): each printer is on one URY Print
+  Agent, and that PC prints every ticket for it. It must stay on.
+- **Each station prints its own orders:** for kitchen and bar printers on the
+  network, which every station PC can reach. Each ticket prints from the PC
+  of the station where the order was taken, so no single PC has to stay on.
+  1. On every station PC, add the kitchen and bar printers in Windows (by IP
+     address) and pair URY POS as its own agent (`STATION-1`, ...). Add the
+     kitchen and bar printers to each agent; the same printer may now be on
+     several agents.
+  2. On each *URY Station*, set **Print Agent** to that PC's agent.
+  3. Set **Fallback PC** to the agent that prints everything else: orders not
+     taken at a station (cashier, online orders), reprints, and orders from a
+     station whose PC has been off for 30 seconds. It needs the kitchen and
+     bar printers too.
+
+  Switching back to one PC asks you first to leave each printer on one agent.
+
 ### 1. The printers in Windows
 
 On the PC, install each kitchen, bar and bill printer in Windows with its

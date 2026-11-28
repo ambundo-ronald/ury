@@ -16,8 +16,11 @@ class URYPrintAgent(Document):
 				frappe.throw(_("Printer {0} is listed twice.").format(row.printer))
 			seen.add(row.printer)
 
-		# A printer belongs to one agent, or two PCs would print every ticket.
-		if seen:
+		# A printer belongs to one agent, or two PCs would print every ticket,
+		# unless each station prints its own orders (then one PC prints each ticket).
+		from ury.ury.printing import queue
+
+		if seen and not queue.per_station_printing():
 			taken = frappe.get_all(
 				"URY Print Agent Printer",
 				filters={"printer": ["in", list(seen)], "parent": ["!=", self.name], "parenttype": "URY Print Agent"},
@@ -25,7 +28,10 @@ class URYPrintAgent(Document):
 			)
 			if taken:
 				frappe.throw(
-					_("Printer {0} is already printed by agent {1}.").format(taken[0].printer, taken[0].parent)
+					_(
+						"Printer {0} is already printed by agent {1}. To let each station print its own orders, "
+						"set Ticket Printing to \"Each station prints its own orders\" in URY Station Settings."
+					).format(taken[0].printer, taken[0].parent)
 				)
 
 	@frappe.whitelist()
